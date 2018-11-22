@@ -2,6 +2,8 @@ import { swaggerDefinitions, swaggerDefinition, swaggerJson } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 
+const logger = require('debug')('model')
+
 export default async function genModels(project: Project, data:swaggerJson) {
   const definitions = data.definitions
   for(let modelName in definitions){

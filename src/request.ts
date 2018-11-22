@@ -9,22 +9,15 @@ export interface swaggerJson {
 }
 
 export interface swaggerPath {
-  [key: string]: {
+  [key: string]: swaggerRequest
+}
+
+export interface swaggerRequest {
     tags: string[]
     summary: string
     description: string
     operationId: string
-    parameters: [
-      {
-        in: string
-        name: string
-        description: string
-        required: true
-        schema: {
-          $ref: string
-        }
-      }
-    ]
+    parameters: swaggerParameter[]
     responses: {
       "200": {
         schema: {
@@ -32,6 +25,16 @@ export interface swaggerPath {
         }
       }
     }
+}
+
+export interface swaggerParameter {
+  in: string
+  name: string
+  description: string
+  required: boolean
+  type: string
+  schema: {
+    $ref: string
   }
 }
 
