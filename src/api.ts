@@ -48,7 +48,7 @@ export default async function genApis(project: Project, data: swaggerJson) {
     path = '/' + path;
   }
   var url = path;
-  url = url.replace(/\{([\w-]+)\}/g, function(fullMatch, key) {
+  url = url.replace(/\\{([\\w-]+)\\}/g, function(fullMatch, key) {
     var value;
     if (pathParams.hasOwnProperty(key)) {
       value = pathParams[key];
@@ -115,17 +115,19 @@ function checkAndModifyModelName(name: string) {
 function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[]) {
   const result: { [key: string]: ParameterDeclarationStructure } = {}
   const parameters = path.parameters || []
-  for (let param of parameters) {
-    if (param.in === 'body') {
-      if (param.schema.$ref) {
-        const type = checkAndAddImport(param.schema.$ref, imports)
-        result['bodyParams'] = {
-          name: 'bodyParams',
-          type,
-        }
+
+  const pathParameters = parameters.filter(x => x.in === 'path')
+  if (pathParameters.length > 0) {
+    result['pathParams'] = {
+      name: 'pathParams',
+      type: (writer: CodeBlockWriter) => {
+        writer.write("{ ")
+        writeTypes(pathParameters, writer)
+        writer.write(" }")
       }
     }
   }
+
   const queryParameters = parameters.filter(x => x.in === 'query')
   if (queryParameters.length > 0) {
     result['queryParams'] = {
@@ -138,14 +140,14 @@ function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure
     }
   }
 
-  const pathParameters = parameters.filter(x => x.in === 'path')
-  if (pathParameters.length > 0) {
-    result['pathParams'] = {
-      name: 'pathParams',
-      type: (writer: CodeBlockWriter) => {
-        writer.write("{ ")
-        writeTypes(pathParameters, writer)
-        writer.write(" }")
+  for (let param of parameters) {
+    if (param.in === 'body') {
+      if (param.schema.$ref) {
+        const type = checkAndAddImport(param.schema.$ref, imports)
+        result['bodyParams'] = {
+          name: 'bodyParams',
+          type,
+        }
       }
     }
   }
