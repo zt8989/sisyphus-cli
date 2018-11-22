@@ -1,8 +1,9 @@
-import { swaggerDefinitions, swaggerDefinition } from './request';
+import { swaggerDefinitions, swaggerDefinition, swaggerJson } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 
-export default async function genModels(project: Project, definitions:swaggerDefinitions) {
+export default async function genModels(project: Project, data:swaggerJson) {
+  const definitions = data.definitions
   for(let modelName in definitions){
     const definition = definitions[modelName]
     modelName = checkAndModifyModelName(modelName)

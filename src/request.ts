@@ -2,6 +2,37 @@ import axios from 'axios'
 
 export interface swaggerJson {
   definitions: swaggerDefinitions
+  tags: { name: string, description: string }[]
+  paths: {
+    [key: string]: swaggerPath
+  }
+}
+
+export interface swaggerPath {
+  [key: string]: {
+    tags: string[]
+    summary: string
+    description: string
+    operationId: string
+    parameters: [
+      {
+        in: string
+        name: string
+        description: string
+        required: true
+        schema: {
+          $ref: string
+        }
+      }
+    ]
+    responses: {
+      "200": {
+        schema: {
+          $ref: string
+        }
+      }
+    }
+  }
 }
 
 export interface swaggerDefinitions {
