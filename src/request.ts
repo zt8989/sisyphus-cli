@@ -33,6 +33,9 @@ export interface swaggerParameter {
   description: string
   required: boolean
   type: string
+  items: {
+    type: string
+  }
   schema: {
     $ref: string
   }

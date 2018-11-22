@@ -15,14 +15,14 @@ export default async function genApis(project: Project, data: swaggerJson) {
       const parameters = getParameters(methods[method], imports)
       functions.push({
         name: methods[method].operationId,
-        parameters,
+        parameters: Object.keys(parameters).map(x => parameters[x]),
         returnType: getReturn(methods[method], imports),
         bodyText: writer => {
           writer.writeLine('return this.request({')
-            .writeLine(`url: '${url}',`)
+            .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
             .writeLine(`method: '${method}',`)
-            .conditionalWriteLine(method !== 'get', () => `data: params`)
-            .conditionalWriteLine(parameters.some(p => p.name === 'query'), () => 'params: query')
+            .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams`)
+            .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams')
             .writeLine('})')
         },
         docs: methods[method].description ? [
@@ -37,6 +37,29 @@ export default async function genApis(project: Project, data: swaggerJson) {
   }
   const file = project.createSourceFile(path, {
     imports,
+    functions: [
+      {
+        name: 'bindUrl',
+        parameters: [
+          { name: 'path', type: 'string' },
+          { name: 'pathParams', type: 'any' }
+        ],
+        bodyText: `if (!path.match(/^\\//)) {
+    path = '/' + path;
+  }
+  var url = path;
+  url = url.replace(/\{([\w-]+)\}/g, function(fullMatch, key) {
+    var value;
+    if (pathParams.hasOwnProperty(key)) {
+      value = pathParams[key];
+    } else {
+      value = fullMatch;
+    }
+    return encodeURIComponent(value);
+  });
+  return url;`
+      }
+    ],
     classes: [
       {
         name: 'Api',
@@ -90,31 +113,58 @@ function checkAndModifyModelName(name: string) {
 }
 
 function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[]) {
-  const result: ParameterDeclarationStructure[] = []
+  const result: { [key: string]: ParameterDeclarationStructure } = {}
   const parameters = path.parameters || []
   for (let param of parameters) {
     if (param.in === 'body') {
       if (param.schema.$ref) {
         const type = checkAndAddImport(param.schema.$ref, imports)
-        result.push({
-          name: 'params',
+        result['bodyParams'] = {
+          name: 'bodyParams',
           type,
-        })
+        }
       }
     }
   }
   const queryParameters = parameters.filter(x => x.in === 'query')
   if (queryParameters.length > 0) {
-    result.push({
-      name: 'query',
+    result['queryParams'] = {
+      name: 'queryParams',
       type: (writer: CodeBlockWriter) => {
         writer.write("{ ")
-        writer.write(queryParameters.map(p => `${p.name}: ${Reflect.get(scalarType, p.type)}`).join(' ,'))
+        writeTypes(queryParameters, writer)
         writer.write(" }")
       }
-    })
+    }
+  }
+
+  const pathParameters = parameters.filter(x => x.in === 'path')
+  if (pathParameters.length > 0) {
+    result['pathParams'] = {
+      name: 'pathParams',
+      type: (writer: CodeBlockWriter) => {
+        writer.write("{ ")
+        writeTypes(pathParameters, writer)
+        writer.write(" }")
+      }
+    }
   }
   return result
+}
+
+function writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter) {
+  parameters.forEach((p, i) => {
+    writer.write(i === 0 ? '' : ', ')
+    if (Reflect.has(scalarType, p.type)) {
+      writer.write(`${p.name}: ${Reflect.get(scalarType, p.type)}`)
+    } else if (p.type === 'array') {
+      if (p.items) {
+        if (Reflect.has(scalarType, p.items.type)) {
+          writer.write(`${p.name}: ${Reflect.get(scalarType, p.items.type)}[]`)
+        }
+      }
+    }
+  })
 }
 
 function getReturn(path: swaggerRequest, imports: ImportDeclarationStructure[]) {
@@ -184,7 +234,7 @@ function getProperties(definition: swaggerDefinition, imports: ImportDeclaration
       }
     }
   }
-  console.log(imports)
+  logger(imports)
   return properties
 }
 
@@ -197,7 +247,7 @@ function _getProperties(definition: swaggerDefinition, imports: ImportDeclaratio
 }
 
 function checkAndAddImport(ref: string, imports: ImportDeclarationStructure[]) {
-  console.log(ref)
+  logger(ref)
   const importName = checkAndModifyModelName(ref.slice('#/definitions/'.length))
   const moduleSpecifier = `../model/${importName}`
   if (!imports.some(i => i.moduleSpecifier === moduleSpecifier)) {

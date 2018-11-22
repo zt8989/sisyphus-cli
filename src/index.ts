@@ -10,6 +10,8 @@ import genApis from './api';
 import path from 'path'
 import { promisify } from 'util'
 
+const logger = require('debug')('index')
+
 program
   .version('1.0.0')
   .option('-c, --config', 'config file')
@@ -28,9 +30,13 @@ program
 })()
 
 async function genIndex(project: Project) {
-  await promisify(fs.mkdir)('src')
-  await promisify(fs.writeFile)(path.resolve('src/index.ts'), `import api from './api'\n`
-  + `export default api`, { flag: 'w+' })
+  if(!fs.existsSync('src')){
+    await promisify(fs.mkdir)('src')
+  }
+  if(!fs.existsSync('src/index.ts')){
+    await promisify(fs.writeFile)('src/index.ts', `import api from './api'\n`
+    + `export default api`, { flag: 'w+' })
+  }
 }
 
 async function getData(config: any) {
@@ -38,7 +44,8 @@ async function getData(config: any) {
   if (config.file.startsWith('http')) {
     data = await request(config.file)
   } else {
-    data = require(config.file)
+    const json = await promisify(fs.readFile)(config.file, { encoding: 'utf8' })
+    data = JSON.parse(json)
   }
   if (!data) {
     console.error('获取json失败')
@@ -54,14 +61,13 @@ function getConfig() {
     return false
   }
   const configJson = require(configFile)
-  console.log(configJson)
   if (!configJson.file) {
     console.error('请检查配置文件是否正确！')
     return false
   }
 
 
-  if (!configJson.file.startsWith('http') || fs.existsSync(configJson.file)) {
+  if (!configJson.file.startsWith('http') && !fs.existsSync(configJson.file)) {
     console.error('请确认json文件是否存在!')
     return false
   }

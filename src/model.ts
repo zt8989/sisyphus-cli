@@ -98,7 +98,7 @@ function getProperties(definition: swaggerDefinition, imports: ImportDeclaration
       }
     }
   }
-  console.log(imports)
+  logger(imports)
   return properties
 }
 
@@ -111,7 +111,7 @@ function _getProperties(definition: swaggerDefinition, imports: ImportDeclaratio
 }
 
 function checkAndAddImport(ref: string, imports: ImportDeclarationStructure[]){
-  console.log(ref)
+  logger(ref)
   const importName = checkAndModifyModelName(ref.slice('#/definitions/'.length))
   const moduleSpecifier = `./${importName}`
   if(!imports.some(i => i.moduleSpecifier === moduleSpecifier)){
