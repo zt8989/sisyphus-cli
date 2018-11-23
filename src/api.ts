@@ -3,6 +3,7 @@ import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, Func
 import fs from 'fs'
 import { scalarType } from './utils/enum';
 import axios from 'axios'
+import ModelNameParser from './utils/modelNameParser';
 const logger = require('debug')('api')
 
 export default async function genApis(project: Project, data: swaggerJson) {
@@ -20,7 +21,7 @@ export default async function genApis(project: Project, data: swaggerJson) {
         bodyText: writer => {
           writer.writeLine('return this.request({')
             .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
-            .writeLine(`method: '${method}',`)
+            .writeLine(`method: '${method.toUpperCase()}',`)
             .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams`)
             .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams')
             .writeLine('})')
@@ -109,7 +110,7 @@ export default async function genApis(project: Project, data: swaggerJson) {
  * @param name 
  */
 function checkAndModifyModelName(name: string) {
-  return name.replace(/[«»]/g, "")
+  return new ModelNameParser(name).parseString()
 }
 
 function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[]) {
@@ -153,7 +154,9 @@ function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure
 }
 
 function writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter) {
-  parameters.forEach((p, i) => {
+  const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
+  const normalParameters =  parameters.filter(p => !hasQueryArray(p))
+  normalParameters.forEach((p, i) => {
     writer.write(i === 0 ? '' : ', ')
     if (Reflect.has(scalarType, p.type)) {
       writer.write(`${p.name}: ${Reflect.get(scalarType, p.type)}`)
@@ -163,14 +166,35 @@ function writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter) {
           writer.write(`${p.name}: ${Reflect.get(scalarType, p.items.type)}[]`)
         }
       }
+    } else {
+      writer.write(`${p.name}: any`)
     }
   })
+
+  const list: { [key: string]: swaggerParameter[] } = {}
+  const seprator = '[0].'
+  const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
+  queryArray.forEach(q => {
+    const [name, filed] = q.name.split(seprator) 
+    if(!list[name]){
+      list[name] = []
+    }
+    list[name].push({ ...q, name: filed })
+  })
+  logger(list)
+  for(let i in list){
+    writer.write(normalParameters.length === 0 ? '' : ', ')
+    writer.write(`${i}: {`)
+    writeTypes(list[i], writer)
+    writer.write(` }[]`)
+  }
 }
 
 function getReturn(path: swaggerRequest, imports: ImportDeclarationStructure[]) {
+  logger('getReturn', path)
   if (path.responses[200]) {
     const schema = path.responses[200].schema
-    if (schema.$ref) {
+    if (schema && schema.$ref) {
       const type = checkAndAddImport(schema.$ref, imports)
       return `Promise<${type}>`
     }
@@ -249,6 +273,7 @@ function _getProperties(definition: swaggerDefinition, imports: ImportDeclaratio
 function checkAndAddImport(ref: string, imports: ImportDeclarationStructure[]) {
   logger(ref)
   const importName = checkAndModifyModelName(ref.slice('#/definitions/'.length))
+  logger('importName', importName)
   const moduleSpecifier = `../model/${importName}`
   if (!imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
     imports.push({

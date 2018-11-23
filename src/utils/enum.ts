@@ -3,3 +3,10 @@ export const scalarType = {
   'boolean': 'boolean',
   'integer': 'number',
 }
+
+export const scalarTypeS = {
+  'string': 'S',
+  'boolean': 'B',
+  'integer': 'I',
+  'long': 'L'
+}
