@@ -13,7 +13,11 @@ export default async function genApis(project: Project, data: swaggerJson) {
   for (let url in paths) {
     const methods = paths[url]
     for (let method in methods) {
-      const parameters = getParameters(methods[method], imports)
+      const docs = methods[method].description ? [
+        methods[method].description
+      ] : []
+      const parameters = getParameters(methods[method], imports, docs)
+      logger('docs', docs)
       functions.push({
         name: methods[method].operationId,
         parameters: Object.keys(parameters).map(x => parameters[x]),
@@ -26,9 +30,7 @@ export default async function genApis(project: Project, data: swaggerJson) {
             .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams')
             .writeLine('})')
         },
-        docs: methods[method].description ? [
-          methods[method].description
-        ] : []
+        docs: docs.length > 0 ? [ docs.join('\n') ] : []
       })
     }
   }
@@ -113,14 +115,17 @@ function checkAndModifyModelName(name: string) {
   return new ModelNameParser(name).parseString()
 }
 
-function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[]) {
+function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[]) {
   const result: { [key: string]: ParameterDeclarationStructure } = {}
   const parameters = path.parameters || []
 
   const pathParameters = parameters.filter(x => x.in === 'path')
   if (pathParameters.length > 0) {
-    result['pathParams'] = {
-      name: 'pathParams',
+    const name = 'pathParams'
+    docs.push(`@param {Object} ${name}`)
+    getParameterDocs(name, pathParameters, docs)
+    result[name] = {
+      name,
       type: (writer: CodeBlockWriter) => {
         writer.write("{ ")
         writeTypes(pathParameters, writer)
@@ -129,10 +134,15 @@ function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure
     }
   }
 
+  console.log(docs)
+
   const queryParameters = parameters.filter(x => x.in === 'query')
   if (queryParameters.length > 0) {
-    result['queryParams'] = {
-      name: 'queryParams',
+    const name = 'queryParams'
+    docs.push(`@param {Object} ${name}`)
+    getParameterDocs(name, queryParameters, docs)
+    result[name] = {
+      name,
       type: (writer: CodeBlockWriter) => {
         writer.write("{ ")
         writeTypes(queryParameters, writer)
@@ -149,14 +159,50 @@ function getParameters(path: swaggerRequest, imports: ImportDeclarationStructure
           name: 'bodyParams',
           type,
         }
+        docs.push(`@param {${type}} bodyParams - ${param.description}`)
       }
     }
   }
   return result
 }
 
+function getParameterDocs(name: string, parameters: swaggerParameter[], docs: string[], isArray: boolean = false){
+  const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
+
+  const normalParameters =  parameters.filter(p => !hasQueryArray(p))
+  normalParameters.forEach((p, i) => {
+    if (Reflect.has(scalarType, p.type)) {
+      docs.push(`@param {${Reflect.get(scalarType, p.type)}} ${name}${isArray ?'[]' : ''}.${p.name} - ${p.description}`)
+    } else if (p.type === 'array') {
+      if (p.items) {
+        if (Reflect.has(scalarType, p.items.type)) {
+          docs.push(`@param {${Reflect.get(scalarType, p.type)}[]} ${name}${isArray ? '[]' : ''}.${p.name} - ${p.description}`)
+        }
+      }
+    } else {
+      docs.push(`@param {*} ${name}${isArray ? '[]' : ''}.${p.name} - ${p.description}`)
+    }
+  })
+
+  const list: { [key: string]: swaggerParameter[] } = {}
+  const seprator = '[0].'
+  const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
+  queryArray.forEach(q => {
+    const [name, filed] = q.name.split(seprator) 
+    if(!list[name]){
+      list[name] = []
+    }
+    list[name].push({ ...q, name: filed })
+  })
+  logger(list)
+  for(let i in list){
+    getParameterDocs(name, list[i], docs, true)
+  }
+}
+
 function writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter) {
   const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
+
   const normalParameters =  parameters.filter(p => !hasQueryArray(p))
   normalParameters.forEach((p, i) => {
     writer.write(i === 0 ? '' : ', ')
