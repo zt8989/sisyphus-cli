@@ -1,6 +1,7 @@
 import { swaggerDefinitions, swaggerDefinition, swaggerJson } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
+import ModelNameParser from './utils/modelNameParser'
 
 const logger = require('debug')('model')
 
@@ -34,7 +35,7 @@ export default async function genModels(project: Project, data:swaggerJson) {
  * @param name 
  */
 function checkAndModifyModelName(name: string){
-  return name.replace(/[«»]/g, "")
+  return new ModelNameParser(name).parseString()
 }
 
 const scalarType = {
