@@ -170,17 +170,22 @@ function getParameterDocs(name: string, parameters: swaggerParameter[], docs: st
   const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
 
   const normalParameters =  parameters.filter(p => !hasQueryArray(p))
+
+  const addDocs = (type: string, name: string, desc: string = '') => {
+    docs.push(`@param {${type}} ${name} - ${desc}`)
+  }
+
   normalParameters.forEach((p, i) => {
     if (Reflect.has(scalarType, p.type)) {
-      docs.push(`@param {${Reflect.get(scalarType, p.type)}} ${name}${isArray ?'[]' : ''}.${p.name} - ${p.description}`)
+      addDocs(Reflect.get(scalarType, p.type), `${name}${isArray ?'[]' : ''}.${p.name}`, p.description)
     } else if (p.type === 'array') {
       if (p.items) {
         if (Reflect.has(scalarType, p.items.type)) {
-          docs.push(`@param {${Reflect.get(scalarType, p.type)}[]} ${name}${isArray ? '[]' : ''}.${p.name} - ${p.description}`)
+          addDocs(`${Reflect.get(scalarType, p.items.type)}[]`, `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
         }
       }
     } else {
-      docs.push(`@param {*} ${name}${isArray ? '[]' : ''}.${p.name} - ${p.description}`)
+      addDocs('*', `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
     }
   })
 
