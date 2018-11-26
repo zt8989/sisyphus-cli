@@ -1,6 +1,6 @@
 {
   "name": "sisyphus-cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a tool that gen api code with typescript from swagger",
   "main": "index.js",
   "scripts": {
@@ -20,6 +20,9 @@
   "bin": {
     "sisyphus": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@types/node": "^10.12.10",
     "axios": "^0.18.0",
