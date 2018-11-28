@@ -21,7 +21,8 @@
     "sisyphus": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "sample"
   ],
   "dependencies": {
     "@types/ejs": "^2.6.0",
