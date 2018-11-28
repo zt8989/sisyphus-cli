@@ -2,6 +2,9 @@ export const scalarType = {
   'string': 'string',
   'boolean': 'boolean',
   'integer': 'number',
+  'int': 'number',
+  'long': 'number',
+  'Void': 'null'
 }
 
 export const scalarTypeS = {

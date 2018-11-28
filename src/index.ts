@@ -3,10 +3,10 @@
 import axios from 'axios'
 import request from './request'
 import { Project } from 'ts-simple-ast'
-import genModels from './model';
+import ModelTool from './model';
 import program from 'commander'
 import fs from 'fs'
-import genApis from './api';
+import ApiTool from './api';
 import path from 'path'
 import { promisify } from 'util'
 
@@ -23,8 +23,12 @@ program
   const data = await getData(config)
   if (data === false) return
   const project = new Project()
-  await genModels(project, data)
-  await genApis(project, data)
+  const context: Context = {
+    config,
+    hasGeneric: false
+  }
+  await new ModelTool(context).genModels(project, data, context)
+  await new ApiTool(context).genApis(project, data)
   await genIndex(project)
   project.save()
 })()
@@ -54,13 +58,23 @@ async function getData(config: any) {
   return data
 }
 
+export interface Context {
+  config: ConfigDefinition
+  hasGeneric: boolean
+}
+
+export interface ConfigDefinition {
+  file: string
+  generic?: string[]
+}
+
 function getConfig() {
   const configFile = program.config || path.resolve(process.cwd() ,'sisyphus.json')
   if (!fs.existsSync(configFile)) {
     console.error('请确认配置文件是否存在!')
     return false
   }
-  const configJson = require(configFile)
+  const configJson = require(configFile) as ConfigDefinition
   if (!configJson.file) {
     console.error('请检查配置文件是否正确！')
     return false
