@@ -8,17 +8,17 @@ import { Context } from './index';
 import BaseTool from './baseTool'
 const logger = require('debug')('api')
 
-export default class ApiTool extends BaseTool{
+export default class ApiTool extends BaseTool {
 
   /**
    * 预先加载泛型类
    */
-  importGenerics(imports: ImportDeclarationStructure[]){
+  importGenerics(imports: ImportDeclarationStructure[]) {
     (this.context.config.generic || []).forEach(g => {
       this._checkAndAddImport(g, imports)
     })
   }
-  
+
   async genApis(project: Project, data: swaggerJson) {
     const paths = data.paths
     const functions: MethodDeclarationStructure[] = []
@@ -214,8 +214,9 @@ export default class ApiTool extends BaseTool{
 
   writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter) {
     const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
+    const hasQueryObject = (p: swaggerParameter) => p.in === "query" && p.name.includes('.') && !p.name.includes('[0].')
 
-    const normalParameters = parameters.filter(p => !hasQueryArray(p))
+    const normalParameters = parameters.filter(p => !hasQueryArray(p) && !hasQueryObject(p))
     normalParameters.forEach((p, i) => {
       writer.write(i === 0 ? '' : ', ')
       if (Reflect.has(scalarType, p.type)) {
@@ -231,22 +232,43 @@ export default class ApiTool extends BaseTool{
       }
     })
 
-    const list: { [key: string]: swaggerParameter[] } = {}
-    const seprator = '[0].'
-    const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
-    queryArray.forEach(q => {
-      const [name, filed] = q.name.split(seprator)
-      if (!list[name]) {
-        list[name] = []
+    {
+      const list: { [key: string]: swaggerParameter[] } = {}
+      const seprator = '[0].'
+      const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
+      queryArray.forEach(q => {
+        const [name, filed] = q.name.split(seprator)
+        if (!list[name]) {
+          list[name] = []
+        }
+        list[name].push({ ...q, name: filed })
+      })
+      logger(list)
+      for (let i in list) {
+        writer.write(normalParameters.length === 0 ? '' : ', ')
+        writer.write(`${i}: {`)
+        this.writeTypes(list[i], writer)
+        writer.write(` }[]`)
       }
-      list[name].push({ ...q, name: filed })
-    })
-    logger(list)
-    for (let i in list) {
-      writer.write(normalParameters.length === 0 ? '' : ', ')
-      writer.write(`${i}: {`)
-      this.writeTypes(list[i], writer)
-      writer.write(` }[]`)
+    }
+    {
+      const list: { [key: string]: swaggerParameter[] } = {}
+      const seprator = '.'
+      const queryObject: swaggerParameter[] = parameters.filter(hasQueryObject)
+      queryObject.forEach(q => {
+        const [name, filed] = q.name.split(seprator)
+        if (!list[name]) {
+          list[name] = []
+        }
+        list[name].push({ ...q, name: filed })
+      })
+      logger(list)
+      for (let i in list) {
+        writer.write(normalParameters.length === 0 ? '' : ', ')
+        writer.write(`${i}: {`)
+        this.writeTypes(list[i], writer)
+        writer.write(` }`)
+      }
     }
   }
 
@@ -330,7 +352,7 @@ export default class ApiTool extends BaseTool{
 
   }
 
-  getRelativePath(model: string){
+  getRelativePath(model: string) {
     return `../model/${model}`
   }
 }

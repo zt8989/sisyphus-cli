@@ -9,15 +9,21 @@ import fs from 'fs'
 import ApiTool from './api';
 import path from 'path'
 import { promisify } from 'util'
+import ejs, { Data } from 'ejs'
 
 const logger = require('debug')('index')
 
 program
   .version('1.0.0')
-  .option('-c, --config', 'config file')
+  .option('-c, --config [file]', 'config file')
+  .option('init [name]', 'init a project')
   .parse(process.argv);
 
 (async () => {
+  if(program.init){
+    initProject()
+    return
+  }
   const config = getConfig()
   if (config === false) return
   const data = await getData(config)
@@ -68,10 +74,23 @@ export interface ConfigDefinition {
   generic?: string[]
 }
 
+async function initProject(){
+  const projectName = program.init 
+  const files = await promisify(fs.readdir)(path.resolve(__dirname, '../sample'))
+  const readFile = promisify(fs.readFile)
+  const writeFile = promisify(fs.writeFile)
+  for(let file of files){
+    const str = await readFile(path.resolve(__dirname, '../sample', file), { encoding: 'utf8' })
+    const renderStr = ejs.render(str, { name: projectName })
+    await writeFile(file, renderStr, { encoding: 'utf8'} )
+  }
+  console.log('创建成功，请修改sisyphus.json中的swagger地址!have fun!')
+}
+
 function getConfig() {
   const configFile = program.config || path.resolve(process.cwd() ,'sisyphus.json')
   if (!fs.existsSync(configFile)) {
-    console.error('请确认配置文件是否存在!')
+    console.error('请确认配置文件是否存在!如果未执行初始化，请执行sisyphus --init project-name')
     return false
   }
   const configJson = require(configFile) as ConfigDefinition

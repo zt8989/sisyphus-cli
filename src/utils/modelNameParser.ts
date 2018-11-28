@@ -138,8 +138,8 @@ export default class ModelNameParser {
     if (name.length == 0) {
       return ""
     }
-    if (/\w/.test(name[0])) {
-      const match = name.match(/\w+/)
+    if (/[-'a-z\u4e00-\u9eff]/i.test(name[0])) {
+      const match = name.match(/[-'a-z\u4e00-\u9eff]+/i)
       if (match) {
         this.position += match[0].length
       }
