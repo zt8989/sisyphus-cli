@@ -70,7 +70,7 @@ export default class ModelTool extends BaseTool{
       for (let propName in definition.properties) {
         const prop = definition.properties[propName]
         if (prop.$ref) {
-          const type = this.checkAndAddImport(prop.$ref, imports, [modelName])
+          const type = this.checkAndReturnType(prop.$ref, imports, [modelName])
           properties.push({
             name: propName,
             type,
@@ -87,7 +87,7 @@ export default class ModelTool extends BaseTool{
             })
           } else if (prop.type === 'array') {
             if (prop.items.$ref) {
-              const type = this.checkAndAddImport(prop.items.$ref, imports, [modelName])
+              const type = this.checkAndReturnType(prop.items.$ref, imports, [modelName])
               properties.push({
                 name: propName,
                 type: `${type}[]`,
@@ -101,7 +101,7 @@ export default class ModelTool extends BaseTool{
               })
             } else if (prop.items.type === 'array') {
               if (prop.items.items.$ref) {
-                const type = this.checkAndAddImport(prop.items.items.$ref, imports, [modelName])
+                const type = this.checkAndReturnType(prop.items.items.$ref, imports, [modelName])
                 properties.push({
                   name: propName,
                   type: `${type}[]`,
