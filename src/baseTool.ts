@@ -119,6 +119,6 @@ export default class BaseTool {
   }
 
   checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
-    return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports)
+    return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports, exclude)
   }
 }

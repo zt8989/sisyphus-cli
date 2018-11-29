@@ -29,9 +29,13 @@ export default class ApiTool extends BaseTool {
     for (let url in paths) {
       const methods = paths[url]
       for (let method in methods) {
-        const docs = methods[method].description ? [
-          methods[method].description
-        ] : []
+        const docs = []
+        if(methods[method].summary ){
+          docs.push(methods[method].summary )
+        }
+        if(methods[method].description ){
+          docs.push(methods[method].description )
+        }
         docs.push(`${method.toUpperCase()} ${url}`)
         const parameters = this.getParameters(methods[method], imports, docs)
         logger('docs', docs)
