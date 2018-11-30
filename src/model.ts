@@ -22,7 +22,6 @@ export default class ModelTool extends BaseTool{
       genericList = context.config.generic.filter(x => fs.existsSync(`src/model/${x}.ts`))
       this.context.config.generic = genericList
     }
-    console.log(this.context.config.generic)
     for (let defineName in definitions) {
       const definition = definitions[defineName]
       let modelName = this.checkAndModifyModelName(defineName)

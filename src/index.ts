@@ -36,7 +36,8 @@ program
   await new ModelTool(context).genModels(project, data, context)
   await new ApiTool(context).genApis(project, data)
   await genIndex(project)
-  project.save()
+  await project.save()
+  console.log('生成成功')
 })()
 
 async function genIndex(project: Project) {
