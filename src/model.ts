@@ -1,38 +1,11 @@
-import { swaggerDefinitions, swaggerDefinition } from './request';
+import { Context } from './index';
+import { swaggerDefinitions, swaggerDefinition, swaggerJson } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
+import ModelNameParser from './utils/modelNameParser'
+import BaseTool from './baseTool'
 
-export default async function genModels(project: Project, definitions:swaggerDefinitions) {
-  for(let modelName in definitions){
-    const definition = definitions[modelName]
-    modelName = checkAndModifyModelName(modelName)
-    const path = `src/model/${modelName}.ts`
-    if(fs.existsSync(path)){
-      fs.unlinkSync(path)
-    }
-    const imports: ImportDeclarationStructure[] = []
-    const properties = getProperties(definition, imports)
-    const file = project.createSourceFile(path, {
-      imports: imports,
-      interfaces: [
-        { 
-          name: modelName,
-          properties: properties,
-          isDefaultExport: true,
-          docs: definition.description ? [ definition.description ] : []
-        }
-      ]
-    })
-  }
-}
-
-/**
- * 检查并移除泛型箭头
- * @param name 
- */
-function checkAndModifyModelName(name: string){
-  return name.replace(/[«»]/g, "")
-}
+const logger = require('debug')('model')
 
 const scalarType = {
   'string': 'string',
@@ -40,82 +13,120 @@ const scalarType = {
   'integer': 'number',
 }
 
-function getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]){
-  const properties: PropertyDeclarationStructure[] = []
-  if(definition.type === "object"){
-    for(let propName in definition.properties){
-      const prop = definition.properties[propName]
-      if(prop.$ref){
-        const type = checkAndAddImport(prop.$ref, imports)
-        properties.push({
-          name: propName,
-          type,
-          docs: prop.description ? [ prop.description ] : []
+export default class ModelTool extends BaseTool{
+ 
+  async genModels(project: Project, data: swaggerJson, context: Context) {
+    const definitions = data.definitions
+    let genericList: string[] = []
+    if (context.config.generic) {
+      genericList = context.config.generic.filter(x => fs.existsSync(`src/model/${x}.ts`))
+      this.context.config.generic = genericList
+    }
+    for (let defineName in definitions) {
+      const definition = definitions[defineName]
+      let modelName = this.checkAndModifyModelName(defineName)
+      if (modelName !== false) {
+        const path = `src/model/${modelName}.ts`
+        if (fs.existsSync(path)) {
+          fs.unlinkSync(path)
+        }
+        const imports: ImportDeclarationStructure[] = []
+        const properties = this.getProperties(definition, imports, modelName)
+        const file = project.createSourceFile(path, {
+          imports: imports,
+          interfaces: [
+            {
+              name: modelName,
+              properties: properties,
+              isDefaultExport: true,
+              docs: definition.description ? [definition.description] : []
+            }
+          ]
         })
       }
+    }
 
-      if(prop.type){
-        if(Reflect.has(scalarType, prop.type)){
+  }
+
+  /**
+   * 检查并移除泛型箭头
+   * @param name 
+   */
+  checkAndModifyModelName(name: string) {
+    const parser = new ModelNameParser(name, this.context.config.generic || [])
+    parser.parse()
+    const struct = parser.getData()
+    if (struct && this.context.config.generic && this.context.config.generic.some(g => g === struct.name)) {
+      return false
+    } else {
+      return parser.asString()
+    }
+  }
+
+  getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[], modelName: string) {
+    const properties: PropertyDeclarationStructure[] = []
+    if (definition.type === "object") {
+      for (let propName in definition.properties) {
+        const prop = definition.properties[propName]
+        if (prop.$ref) {
+          const type = this.checkAndReturnType(prop.$ref, imports, [modelName])
           properties.push({
             name: propName,
-            type: Reflect.get(scalarType, prop.type),
-            docs: prop.description ? [ prop.description ] : []
+            type,
+            docs: prop.description ? [prop.description] : []
           })
-        } else if(prop.type === 'array'){
-          if(prop.items.$ref){
-            const type = checkAndAddImport(prop.items.$ref, imports)
+        }
+
+        if (prop.type) {
+          if (Reflect.has(scalarType, prop.type)) {
             properties.push({
               name: propName,
-              type: `${type}[]`,
-              docs: prop.description ? [ prop.description ] : []
+              type: Reflect.get(scalarType, prop.type),
+              docs: prop.description ? [prop.description] : []
             })
-          } else if(prop.items.type && Reflect.has(scalarType, prop.items.type)){
-            properties.push({
-              name: propName,
-              type: `${Reflect.get(scalarType, prop.items.type)}[]`,
-              docs: prop.description ? [ prop.description ] : []
-            })
-          } else if(prop.items.type === 'array'){
-            if(prop.items.items.$ref){
-              const type = checkAndAddImport(prop.items.items.$ref, imports)
+          } else if (prop.type === 'array') {
+            if (prop.items.$ref) {
+              const type = this.checkAndReturnType(prop.items.$ref, imports, [modelName])
               properties.push({
                 name: propName,
                 type: `${type}[]`,
-                docs: prop.description ? [ prop.description ] : []
+                docs: prop.description ? [prop.description] : []
               })
+            } else if (prop.items.type && Reflect.has(scalarType, prop.items.type)) {
+              properties.push({
+                name: propName,
+                type: `${Reflect.get(scalarType, prop.items.type)}[]`,
+                docs: prop.description ? [prop.description] : []
+              })
+            } else if (prop.items.type === 'array') {
+              if (prop.items.items.$ref) {
+                const type = this.checkAndReturnType(prop.items.items.$ref, imports, [modelName])
+                properties.push({
+                  name: propName,
+                  type: `${type}[]`,
+                  docs: prop.description ? [prop.description] : []
+                })
+              }
             }
+          } else if (prop.type === 'object') {
+            properties.push({
+              name: propName,
+              type: 'object',
+              docs: prop.description ? [prop.description] : []
+            })
           }
-        } else if(prop.type === 'object'){
-          properties.push({
-            name: propName,
-            type: 'object',
-            docs: prop.description ? [ prop.description ] : []
-          })
         }
       }
     }
+    logger(imports)
+    return properties
   }
-  console.log(imports)
-  return properties
-}
 
-function handleArrayProperties(){
+  handleArrayProperties() {
 
-}
-
-function _getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]){
-
-}
-
-function checkAndAddImport(ref: string, imports: ImportDeclarationStructure[]){
-  console.log(ref)
-  const importName = checkAndModifyModelName(ref.slice('#/definitions/'.length))
-  const moduleSpecifier = `./${importName}`
-  if(!imports.some(i => i.moduleSpecifier === moduleSpecifier)){
-    imports.push({
-      moduleSpecifier,
-      defaultImport: importName
-    })
   }
-  return importName
+
+  _getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
+
+  }
 }

@@ -1,14 +1,15 @@
 {
-  "name": "sisyphus",
-  "version": "1.0.0",
+  "name": "sisyphus-cli",
+  "version": "0.0.7",
   "description": "a tool that gen api code with typescript from swagger",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "watch": "tsc -w"
   },
   "repository": {
     "type": "git",
-    "url": "git@git.dawanju.net:benteng/sisyphus.git"
+    "url": "git@github.com:zt8989/sisyphus-cli.git"
   },
   "keywords": [
     "codegen",
@@ -19,9 +20,17 @@
   "bin": {
     "sisyphus": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "sample"
+  ],
   "dependencies": {
+    "@types/ejs": "^2.6.0",
     "@types/node": "^10.12.10",
     "axios": "^0.18.0",
+    "commander": "^2.19.0",
+    "debug": "^4.1.0",
+    "ejs": "^2.6.1",
     "ts-simple-ast": "^19.0.0"
   }
 }
