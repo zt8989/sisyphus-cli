@@ -30,20 +30,20 @@
 ## 如何增加新的项目
 
 1. 新建文件夹如`xxx-api`
-2. `sisyhpus init xxx-api`初始化
+2. `sisyphus init xxx-api`初始化
 3. 查看如何更新代码
 
 ## 如何更新代码
 
 1. 进入相应文件夹如`xxx-api`
-2. 查看`sisyhpus.json`文件file路径是否执行对应swagger的地址
-3. 执行`sisyhpus`更新代码
+2. 查看`sisyphus.json`文件file路径是否执行对应swagger的地址
+3. 执行`sisyphus`更新代码
 4. 执行`npm run build`打包
 5. 将dist的js和d.ts复制到项目或者使用`npm publish`发布
 
 # 原理
 
-`sisyhpus-cli`会根据swagger.json生成类似代码
+`sisyphus-cli`会根据swagger.json生成类似代码
 
 ```javascript
 class Api {
