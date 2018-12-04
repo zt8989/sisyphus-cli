@@ -25,7 +25,7 @@
 
 ## 安装cli
 
-`npm install sisyhpus-cli -g`
+`npm install sisyphus-cli -g`
 
 ## 如何增加新的项目
 
