@@ -51,7 +51,7 @@ export default class ModelNameParser {
       })
       nameRef.name += '[]'
       return
-    } else if(data.name === 'Map'){
+    } else if(['Map', 'LinkedHashMap', 'HashMap'].indexOf(data.name) !== -1){
       nameRef.name += `{ [key: string]: `
       this._parserGenericString(data.children[1], nameRef)
       nameRef.name += `}`

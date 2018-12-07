@@ -1,7 +1,7 @@
 import { Context } from "./index";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
 import { ImportDeclarationStructure } from "ts-simple-ast";
-import { scalarType } from "./utils/enum";
+import { scalarType, containTypes } from "./utils/enum";
 
 export default class BaseTool {
   protected context: Context
@@ -41,7 +41,7 @@ export default class BaseTool {
   }
 
   importGeneric(data: ModelStruct, imports: ImportDeclarationStructure[]) {
-    const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
+    const filterList = containTypes
     data.children
       .forEach(i => {
         if (filterList.indexOf(i.name) === -1) {

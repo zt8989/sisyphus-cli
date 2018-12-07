@@ -280,9 +280,14 @@ export default class ApiTool extends BaseTool {
     logger('getReturn', path)
     if (path.responses[200]) {
       const schema = path.responses[200].schema
-      if (schema && schema.$ref) {
-        const type = this.checkAndReturnType(schema.$ref, imports)
-        return `Promise<${type}>`
+      if (schema){
+        if(schema.$ref) {
+          const type = this.checkAndReturnType(schema.$ref, imports)
+          return `Promise<${type}>`
+        }
+        if(Reflect.has(scalarType ,schema.type)) {
+          return `Promise<${Reflect.get(scalarType, schema.type)}>`
+        }
       }
     }
     return "Promise<any>"
