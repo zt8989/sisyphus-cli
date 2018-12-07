@@ -6,7 +6,11 @@ export default class MapType<T extends Type> implements Type {
     this.valueType = valueType
   }
 
+  getImportType(){
+    return this.valueType.getImportType()
+  }
+
   toString(){
-    return `{ [key: string]: ${this.valueType.toString()} }`
+    return `{ [key: string]: ${this.valueType} }`
   }
 }

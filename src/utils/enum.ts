@@ -4,6 +4,7 @@ export const scalarType = {
   'integer': 'number',
   'int': 'number',
   'long': 'number',
+  'number': 'number',
   'Void': 'null',
   'object': 'any',
 }

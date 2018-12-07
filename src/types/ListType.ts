@@ -6,7 +6,11 @@ export default class ListType<T extends Type> implements Type {
     this.itemType = itemType
   }
 
+  getImportType(){
+    return this.itemType.getImportType()
+  }
+
   toString(){
-    return `{ [key: string]: ${this.itemType.toString()} }`
+    return `${this.itemType}[]`
   }
 }

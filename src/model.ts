@@ -1,9 +1,10 @@
 import { Context } from './index';
-import { swaggerDefinitions, swaggerDefinition, swaggerJson } from './request';
+import { swaggerDefinitions, swaggerDefinition, swaggerJson, swaggerProperty } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 import ModelNameParser from './utils/modelNameParser'
 import BaseTool from './baseTool'
+import TypeParser from './parser';
 
 const logger = require('debug')('model')
 
@@ -13,8 +14,13 @@ const scalarType = {
   'integer': 'number',
 }
 
-export default class ModelTool extends BaseTool{
- 
+type WrapperFunc = (type: string) => string
+const EmptyWrapper: WrapperFunc = type => type
+const ListWrapper: WrapperFunc = type => `${type}[]`
+const MapWrapper: WrapperFunc = type => `{ [key: string]: ${type} }`
+
+export default class ModelTool extends BaseTool {
+
   async genModels(project: Project, data: swaggerJson, context: Context) {
     const definitions = data.definitions
     let genericList: string[] = []
@@ -65,61 +71,37 @@ export default class ModelTool extends BaseTool{
 
   getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[], modelName: string) {
     const properties: PropertyDeclarationStructure[] = []
+    // console.log(new TypeParser().parseDefinition(definition))
     if (definition.type === "object") {
       for (let propName in definition.properties) {
         const prop = definition.properties[propName]
-        if (prop.$ref) {
-          const type = this.checkAndReturnType(prop.$ref, imports, [modelName])
-          properties.push({
-            name: propName,
-            type,
-            docs: prop.description ? [prop.description] : []
-          })
-        }
-
-        if (prop.type) {
-          if (Reflect.has(scalarType, prop.type)) {
-            properties.push({
-              name: propName,
-              type: Reflect.get(scalarType, prop.type),
-              docs: prop.description ? [prop.description] : []
-            })
-          } else if (prop.type === 'array') {
-            if (prop.items.$ref) {
-              const type = this.checkAndReturnType(prop.items.$ref, imports, [modelName])
-              properties.push({
-                name: propName,
-                type: `${type}[]`,
-                docs: prop.description ? [prop.description] : []
-              })
-            } else if (prop.items.type && Reflect.has(scalarType, prop.items.type)) {
-              properties.push({
-                name: propName,
-                type: `${Reflect.get(scalarType, prop.items.type)}[]`,
-                docs: prop.description ? [prop.description] : []
-              })
-            } else if (prop.items.type === 'array') {
-              if (prop.items.items.$ref) {
-                const type = this.checkAndReturnType(prop.items.items.$ref, imports, [modelName])
-                properties.push({
-                  name: propName,
-                  type: `${type}[]`,
-                  docs: prop.description ? [prop.description] : []
-                })
-              }
-            }
-          } else if (prop.type === 'object') {
-            properties.push({
-              name: propName,
-              type: 'object',
-              docs: prop.description ? [prop.description] : []
-            })
-          }
-        }
+        const type = this.parserSchema(prop, imports, modelName);
+        properties.push({
+          name: propName,
+          type,
+          docs: prop.description ? [prop.description] : []
+        });
       }
     }
     logger(imports)
     return properties
+  }
+
+  private parserSchema(prop: swaggerProperty, imports: ImportDeclarationStructure[], modelName: string, wrapper: WrapperFunc = EmptyWrapper): string {
+    if (prop.$ref) {
+      const type = this.checkAndReturnType(prop.$ref, imports, [modelName]);
+      return wrapper(type)
+    }
+    if (prop.type) {
+      if (prop.type === 'object' && prop.additionalProperties) {
+        return wrapper(this.parserSchema(prop.additionalProperties, imports, modelName, MapWrapper))
+      } else if (Reflect.has(scalarType, prop.type)) {
+        return wrapper(Reflect.get(scalarType, prop.type))
+      } else if (prop.type === 'array') {
+        return wrapper(this.parserSchema(prop.items, imports, modelName, ListWrapper))
+      }
+    }
+    return wrapper('any')
   }
 
   handleArrayProperties() {

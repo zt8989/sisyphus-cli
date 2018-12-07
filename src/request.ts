@@ -50,23 +50,23 @@ export interface swaggerDefinition {
     type: string
     required: string[]
     properties: {
-      [key: string]: {
-        type?: string
-        description: string
-        $ref?: string
-        items: swaggerProperty
-      }
+      [key: string]: swaggerProperty
     }
     title: string
     description: string
 }
 
+
+
 export interface swaggerProperty {
   type?: string
   description: string
   $ref?: string
-  items: swaggerProperty
+  items: swaggerProperty,
+  additionalProperties?: swaggerProperty
 }
+
+export type swaggerSchema = swaggerProperty
 
 export default async function getSwaggerJson(url: string){
   const res = await axios.get(url)

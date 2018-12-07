@@ -8,6 +8,10 @@ export default class ScalarType implements Type {
     this.type = type
   }
 
+  getImportType(){
+    return null
+  }
+
   toString(){
     return Reflect.get(scalarType, this.type)
   }

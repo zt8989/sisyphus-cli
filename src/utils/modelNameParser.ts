@@ -1,4 +1,4 @@
-import { scalarTypeS, scalarType } from './enum'
+import { scalarTypeS, scalarType, containTypes } from './enum'
 export type ModelStruct = {
   name: string
   children: ModelStruct[]
@@ -21,11 +21,18 @@ export default class ModelNameParser {
     this.generic = generic
   }
 
+  /**
+   * 泛型解析
+   */
   parseString() {
     this.parse()
+    const data = this.getData()
     return this.asString()
   }
 
+  /**
+   * 将解析数据转换为普通对象 List<abc> => Listabc
+   */
   asString() {
     const data = this.getData()
     const nameRef = { name: "" }
@@ -33,6 +40,9 @@ export default class ModelNameParser {
     return nameRef.name
   }
 
+  /**
+   * 将解析数据转换为泛型对象 List<abc> => List<abc>
+   */
   asGenericString() {
     const data = this.getData()
     const nameRef = { name: "" }
@@ -66,10 +76,49 @@ export default class ModelNameParser {
       })
       nameRef.name += '>'
     } else {
-      if(this.generic.some(x => x === data.name)){
+      if(this.isGeneric(data)){
         nameRef.name += '<any>'
       }
     }
+  }
+
+  /**
+   * import的使用
+   */
+  public getImportList(){
+    const data = this.getData()
+    const imports = new Set<string>()
+    if(this.isGeneric(data)){
+      this._getImportList(data, imports)
+    } else {
+      imports.add(this.asString())
+    }
+    return imports
+  }
+
+  /**
+   * 返回类型标注使用，全称
+   */
+  public getReturnName(){
+    const data = this.getData()
+    if(this.isGeneric(data)){
+      return this.asGenericString()
+    } else {
+      return this.asString()
+    }
+  }
+
+  private _getImportList(data: ModelStruct, imports: Set<string>){
+    if(containTypes.indexOf(data.name) !== -1){
+      imports.add(data.name)
+    }
+    data.children && data.children.forEach(i => {
+      this._getImportList(i, imports)
+    })
+  }
+
+  private isGeneric(data: ModelStruct){
+    return this.generic.some(x => x === data.name)
   }
 
   private _parseString(data: ModelStruct, nameRef: { name: string }) {
@@ -83,6 +132,17 @@ export default class ModelNameParser {
     })
   }
 
+  /**
+   * 解析成功的结构 List<abc> => 
+   * {
+   *  name: List,
+   *  children: [
+   *    {
+   *      name: abc
+   *    }
+   *  ]
+   * }
+   */
   getData() {
     if (!this.data) {
       throw new Error('parse error')
@@ -90,6 +150,9 @@ export default class ModelNameParser {
     return this.data
   }
 
+  /**
+   * 解析模块
+   */
   parse() {
     const data: ModelStruct = { name: "", children: [] }
     let ref: ModelStruct = data
@@ -128,7 +191,7 @@ export default class ModelNameParser {
     this.data = data
   }
 
-  readToken() {
+  private readToken() {
     let name = this.name.slice(this.position)
     const empty = name.match(/\s+/)
     if (empty) {
