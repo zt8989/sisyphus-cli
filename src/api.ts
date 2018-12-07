@@ -5,7 +5,7 @@ import { scalarType } from './utils/enum';
 import axios from 'axios'
 import ModelNameParser from './utils/modelNameParser';
 import { Context } from './index';
-import BaseTool from './baseTool'
+import BaseTool, { PromiseWrapper } from './baseTool'
 const logger = require('debug')('api')
 
 export default class ApiTool extends BaseTool {
@@ -281,84 +281,10 @@ export default class ApiTool extends BaseTool {
     if (path.responses[200]) {
       const schema = path.responses[200].schema
       if (schema){
-        if(schema.$ref) {
-          const type = this.checkAndReturnType(schema.$ref, imports)
-          return `Promise<${type}>`
-        }
-        if(Reflect.has(scalarType ,schema.type)) {
-          return `Promise<${Reflect.get(scalarType, schema.type)}>`
-        }
+        return this.parserSchema(schema, imports, [], PromiseWrapper)
       }
     }
-    return "Promise<any>"
-  }
-
-
-  getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
-    const properties: PropertyDeclarationStructure[] = []
-    if (definition.type === "object") {
-      for (let propName in definition.properties) {
-        const prop = definition.properties[propName]
-        if (prop.$ref) {
-          const type = this.checkAndAddImport(prop.$ref, imports)
-          properties.push({
-            name: propName,
-            type,
-            docs: prop.description ? [prop.description] : []
-          })
-        }
-
-        if (prop.type) {
-          if (Reflect.has(scalarType, prop.type)) {
-            properties.push({
-              name: propName,
-              type: Reflect.get(scalarType, prop.type),
-              docs: prop.description ? [prop.description] : []
-            })
-          } else if (prop.type === 'array') {
-            if (prop.items.$ref) {
-              const type = this.checkAndAddImport(prop.items.$ref, imports)
-              properties.push({
-                name: propName,
-                type: `${type}[]`,
-                docs: prop.description ? [prop.description] : []
-              })
-            } else if (prop.items.type && Reflect.has(scalarType, prop.items.type)) {
-              properties.push({
-                name: propName,
-                type: `${Reflect.get(scalarType, prop.items.type)}[]`,
-                docs: prop.description ? [prop.description] : []
-              })
-            } else if (prop.items.type === 'array') {
-              if (prop.items.items.$ref) {
-                const type = this.checkAndAddImport(prop.items.items.$ref, imports)
-                properties.push({
-                  name: propName,
-                  type: `${type}[]`,
-                  docs: prop.description ? [prop.description] : []
-                })
-              }
-            }
-          } else if (prop.type === 'object') {
-            properties.push({
-              name: propName,
-              type: 'object',
-              docs: prop.description ? [prop.description] : []
-            })
-          }
-        }
-      }
-    }
-    logger(imports)
-    return properties
-  }
-
-  handleArrayProperties() {
-
-  }
-
-  _getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
-
+    return PromiseWrapper('any')
   }
 
   getRelativePath(model: string) {

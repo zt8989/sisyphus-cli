@@ -20,10 +20,7 @@ export interface swaggerRequest {
     parameters: swaggerParameter[]
     responses: {
       "200": {
-        schema: {
-          type: string,
-          $ref: string
-        }
+        schema: swaggerSchema
       }
     }
 }
@@ -58,15 +55,15 @@ export interface swaggerDefinition {
 
 
 
-export interface swaggerProperty {
+export interface swaggerSchema {
   type?: string
   description: string
   $ref?: string
-  items: swaggerProperty,
-  additionalProperties?: swaggerProperty
+  items: swaggerSchema,
+  additionalProperties?: swaggerSchema
 }
 
-export type swaggerSchema = swaggerProperty
+export type swaggerProperty = swaggerSchema
 
 export default async function getSwaggerJson(url: string){
   const res = await axios.get(url)

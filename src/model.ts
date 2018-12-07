@@ -14,11 +14,6 @@ const scalarType = {
   'integer': 'number',
 }
 
-type WrapperFunc = (type: string) => string
-const EmptyWrapper: WrapperFunc = type => type
-const ListWrapper: WrapperFunc = type => `${type}[]`
-const MapWrapper: WrapperFunc = type => `{ [key: string]: ${type} }`
-
 export default class ModelTool extends BaseTool {
 
   async genModels(project: Project, data: swaggerJson, context: Context) {
@@ -75,7 +70,7 @@ export default class ModelTool extends BaseTool {
     if (definition.type === "object") {
       for (let propName in definition.properties) {
         const prop = definition.properties[propName]
-        const type = this.parserSchema(prop, imports, modelName);
+        const type = this.parserSchema(prop, imports, [ modelName ]);
         properties.push({
           name: propName,
           type,
@@ -85,30 +80,5 @@ export default class ModelTool extends BaseTool {
     }
     logger(imports)
     return properties
-  }
-
-  private parserSchema(prop: swaggerProperty, imports: ImportDeclarationStructure[], modelName: string, wrapper: WrapperFunc = EmptyWrapper): string {
-    if (prop.$ref) {
-      const type = this.checkAndReturnType(prop.$ref, imports, [modelName]);
-      return wrapper(type)
-    }
-    if (prop.type) {
-      if (prop.type === 'object' && prop.additionalProperties) {
-        return wrapper(this.parserSchema(prop.additionalProperties, imports, modelName, MapWrapper))
-      } else if (Reflect.has(scalarType, prop.type)) {
-        return wrapper(Reflect.get(scalarType, prop.type))
-      } else if (prop.type === 'array') {
-        return wrapper(this.parserSchema(prop.items, imports, modelName, ListWrapper))
-      }
-    }
-    return wrapper('any')
-  }
-
-  handleArrayProperties() {
-
-  }
-
-  _getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
-
   }
 }

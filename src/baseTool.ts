@@ -2,6 +2,13 @@ import { Context } from "./index";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
 import { ImportDeclarationStructure } from "ts-simple-ast";
 import { scalarType, containTypes } from "./utils/enum";
+import { swaggerProperty, swaggerSchema } from "./request";
+
+export type WrapperFunc = (type: string) => string
+export const EmptyWrapper: WrapperFunc = type => type
+export const ListWrapper: WrapperFunc = type => `${type}[]`
+export const MapWrapper: WrapperFunc = type => `{ [key: string]: ${type} }`
+export const PromiseWrapper: WrapperFunc = type => `Promise<${type}>`
 
 export default class BaseTool {
   protected context: Context
@@ -120,5 +127,23 @@ export default class BaseTool {
 
   checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
     return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports, exclude)
+  }
+
+
+  parserSchema(prop: swaggerSchema, imports: ImportDeclarationStructure[], exclude: string[], wrapper: WrapperFunc = EmptyWrapper): string {
+    if (prop.$ref) {
+      const type = this.checkAndReturnType(prop.$ref, imports, exclude);
+      return wrapper(type)
+    }
+    if (prop.type) {
+      if (prop.type === 'object' && prop.additionalProperties) {
+        return wrapper(this.parserSchema(prop.additionalProperties, imports, exclude, MapWrapper))
+      } else if (Reflect.has(scalarType, prop.type)) {
+        return wrapper(Reflect.get(scalarType, prop.type))
+      } else if (prop.type === 'array') {
+        return wrapper(this.parserSchema(prop.items, imports, exclude, ListWrapper))
+      }
+    }
+    return wrapper('any')
   }
 }
