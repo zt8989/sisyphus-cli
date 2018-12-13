@@ -45,8 +45,12 @@ async function genIndex(project: Project) {
     await promisify(fs.mkdir)('src')
   }
   if(!fs.existsSync('src/index.ts')){
-    await promisify(fs.writeFile)('src/index.ts', `import api from './api'\n`
-    + `export default api`, { flag: 'w+' })
+    await promisify(fs.writeFile)(
+      'src/index.ts', 
+      `export * from './model'\n` 
+    + `import api from './api'\n`
+    + `export default api`,
+    { flag: 'w+' })
   }
 }
 

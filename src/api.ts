@@ -27,6 +27,10 @@ export default class ApiTool extends BaseTool {
     this.importGenerics(imports)
 
     for (let url in paths) {
+      let requestPath = url
+      if(url.endsWith('/') && url.length > 1){
+        requestPath = url.slice(0, url.length -1 )
+      }
       const methods = paths[url]
       for (let method in methods) {
         const docs = []
@@ -36,7 +40,7 @@ export default class ApiTool extends BaseTool {
         if(methods[method].description ){
           docs.push(methods[method].description )
         }
-        docs.push(`${method.toUpperCase()} ${url}`)
+        docs.push(`${method.toUpperCase()} ${requestPath}`)
         const parameters = this.getParameters(methods[method], imports, docs)
         logger('docs', docs)
         functions.push({
@@ -45,7 +49,7 @@ export default class ApiTool extends BaseTool {
           returnType: this.getReturn(methods[method], imports),
           bodyText: writer => {
             writer.writeLine('return this.request({')
-              .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
+              .writeLine(`url: bindUrl('${requestPath}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
               .writeLine(`method: '${method.toUpperCase()}',`)
               .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams,`)
               .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams,')

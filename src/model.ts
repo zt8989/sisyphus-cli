@@ -1,6 +1,6 @@
 import { Context } from './index';
 import { swaggerDefinitions, swaggerDefinition, swaggerJson, swaggerProperty } from './request';
-import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
+import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, ExportDeclaration, ExportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 import ModelNameParser from './utils/modelNameParser'
 import BaseTool from './baseTool'
@@ -23,11 +23,13 @@ export default class ModelTool extends BaseTool {
       genericList = context.config.generic.filter(x => fs.existsSync(`src/model/${x}.ts`))
       this.context.config.generic = genericList
     }
+    const modelNameList = []
     for (let defineName in definitions) {
       const definition = definitions[defineName]
       let modelName = this.checkAndModifyModelName(defineName)
       if (modelName !== false) {
         const path = `src/model/${modelName}.ts`
+        modelNameList.push(modelName)
         if (fs.existsSync(path)) {
           fs.unlinkSync(path)
         }
@@ -46,7 +48,14 @@ export default class ModelTool extends BaseTool {
         })
       }
     }
-
+    const path = `src/model/index.ts`
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path)
+    }
+    const file = project.createSourceFile(path, {
+      exports: modelNameList.map((modelName: string): ExportDeclarationStructure => { 
+        return { namedExports: writer  => writer.writeLine(`default as ${modelName}`), moduleSpecifier: `./${modelName}` } })
+    })
   }
 
   /**

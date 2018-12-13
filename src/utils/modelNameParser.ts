@@ -71,7 +71,10 @@ export default class ModelNameParser {
     }
     if (data.children.length > 0) {
       nameRef.name += '<'
-      data.children.forEach(i => {
+      data.children.forEach((i, index) => {
+        if(index !== 0){
+          nameRef.name += ', '
+        }
         this._parserGenericString(i, nameRef)
       })
       nameRef.name += '>'
