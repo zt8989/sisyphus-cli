@@ -49,6 +49,7 @@ export default class ApiTool extends BaseTool {
           returnType: this.getReturn(methods[method], imports),
           bodyText: writer => {
             writer.writeLine('return this.request({')
+              .writeLine(`originUrl: '${requestPath}',`)
               .writeLine(`url: bindUrl('${requestPath}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
               .writeLine(`method: '${method.toUpperCase()}',`)
               .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams,`)
@@ -120,6 +121,7 @@ export default class ApiTool extends BaseTool {
         {
           name: 'AjaxOptions',
           properties: [
+            { name: 'originUrl', type: 'string' },
             { name: 'url', type: 'string' },
             { name: 'method', type: 'string', hasQuestionToken: true },
             { name: 'baseURL', type: 'string', hasQuestionToken: true },
