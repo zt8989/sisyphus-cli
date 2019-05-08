@@ -8,6 +8,17 @@ import { Context } from './index';
 import BaseTool from './baseTool'
 const logger = require('debug')('api')
 
+function handleOperationId(id: string){
+  const preg = /Using\w+(_\d+)?$/
+  if(preg.test(id)){
+    const match = id.match(preg)
+    if(match){
+      return id.slice(0, match.index)
+    }
+  }
+  return id
+}
+
 export default class ApiTool extends BaseTool {
 
   /**
@@ -19,48 +30,151 @@ export default class ApiTool extends BaseTool {
     })
   }
 
-  async genApis(project: Project, data: swaggerJson) {
-    const paths = data.paths
-    const functions: MethodDeclarationStructure[] = []
-    const imports: ImportDeclarationStructure[] = []
-
-    this.importGenerics(imports)
-
-    for (let url in paths) {
-      const methods = paths[url]
-      for (let method in methods) {
-        const docs = []
-        if(methods[method].summary ){
-          docs.push(methods[method].summary )
-        }
-        if(methods[method].description ){
-          docs.push(methods[method].description )
-        }
-        docs.push(`${method.toUpperCase()} ${url}`)
-        const parameters = this.getParameters(methods[method], imports, docs)
-        logger('docs', docs)
-        functions.push({
-          name: methods[method].operationId,
-          parameters: Object.keys(parameters).map(x => parameters[x]),
-          returnType: this.getReturn(methods[method], imports),
-          bodyText: writer => {
-            writer.writeLine('return this.request({')
-              .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
-              .writeLine(`method: '${method.toUpperCase()}',`)
-              .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams,`)
-              .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams,')
-              .writeLine('})')
-          },
-          docs: docs.length > 0 ? [docs.join('\n')] : []
-        })
-      }
+  getTag(tag: string){
+    const configTags = this.context.config.tags
+    if(configTags){
+      return configTags[tag] || tag
     }
+    return tag
+  }
+
+  async genApis(project: Project, data: swaggerJson) {
+    this.createDefineFile(project)
+    this.createTags(data)
+
+    const defaultImports :ImportDeclarationStructure[] = [{
+      moduleSpecifier: './define',
+      namedImports: [ 'AjaxRequest', 'bindUrl', 'AjaxOptions' ]
+    }]
+
+    const indexImports :ImportDeclarationStructure[] = defaultImports
+
+    for (let tag of data.tags) {
+      const tagName = this.getTag(tag.name)
+      const paths = data.paths
+      const functions: MethodDeclarationStructure[] = []
+      const imports: ImportDeclarationStructure[] = defaultImports
+
+      this.importGenerics(imports)
+      indexImports.push({
+        moduleSpecifier: `./${tagName}`,
+        defaultImport: tagName
+      })
+
+      for (let url in paths) {
+        const methods = paths[url]
+        for (let method in methods) {
+          if(methods[method].tags.indexOf(tag.name) === -1){
+            break
+          }
+          const docs = []
+          if (methods[method].summary) {
+            docs.push(methods[method].summary)
+          }
+          if (methods[method].description) {
+            docs.push(methods[method].description)
+          }
+          docs.push(`${method.toUpperCase()} ${url}`)
+          const parameters = this.getParameters(methods[method], imports, docs)
+          logger('docs', docs)
+          functions.push({
+            name: handleOperationId(methods[method].operationId),
+            parameters: Object.keys(parameters).map(x => parameters[x]),
+            returnType: this.getReturn(methods[method], imports),
+            bodyText: writer => {
+              writer.writeLine('return this.request({')
+                .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
+                .writeLine(`method: '${method.toUpperCase()}',`)
+                .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams,`)
+                .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams,')
+                .writeLine('})')
+            },
+            docs: docs.length > 0 ? [docs.join('\n')] : []
+          })
+        }
+      }
+      const path = `src/api/${tagName}.ts`
+      if (fs.existsSync(path)) {
+        fs.unlinkSync(path)
+      }
+      const file = project.createSourceFile(path, {
+        imports,
+        classes: [
+          {
+            name: 'Api',
+            methods: functions,
+            properties: [
+              { name: 'request', type: 'AjaxRequest' }
+            ],
+            ctors: [
+              {
+                parameters: [
+                  { name: 'request', type: 'AjaxRequest' }
+                ],
+                bodyText: 'this.request = request'
+              }
+            ],
+            isDefaultExport: true
+          }
+        ],
+      })
+    }
+  
     const path = `src/api/index.ts`
     if (fs.existsSync(path)) {
       fs.unlinkSync(path)
     }
-    const file = project.createSourceFile(path, {
-      imports,
+
+    let bodyText = 'return {\r\n'
+    data.tags.forEach(tag => {
+      const tagName = this.getTag(tag.name)
+      bodyText += `${tagName}: new ${tagName}(request),\r\n`
+    })
+    bodyText += '}'
+    project.createSourceFile(path, {
+      imports: indexImports,
+      functions: [
+        {
+          bodyText,
+          parameters: [{ name: 'request', type: 'AjaxRequest' }],
+          isDefaultExport: true
+        }
+      ]
+    })
+  }
+
+  createDefineFile(project: Project){
+    const path = `src/api/define.ts`
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path)
+    }
+    
+    project.createSourceFile(path, {
+      interfaces: [
+        {
+          name: 'AjaxRequest',
+          methods: [
+            {
+              name: '<T=any>',
+              parameters: [{ name: 'options', type: 'AjaxOptions' }],
+              returnType: 'Promise<T>'
+            }
+          ],
+          isExported: true
+        },
+        {
+          name: 'AjaxOptions',
+          properties: [
+            { name: 'url', type: 'string' },
+            { name: 'method', type: 'string', hasQuestionToken: true },
+            { name: 'baseURL', type: 'string', hasQuestionToken: true },
+            { name: 'headers', type: 'any', hasQuestionToken: true },
+            { name: 'params', type: 'any', hasQuestionToken: true },
+            { name: 'data', type: 'any', hasQuestionToken: true },
+          ],
+          isExported: true
+        }
+      ],
       functions: [
         {
           name: 'bindUrl',
@@ -81,50 +195,10 @@ export default class ApiTool extends BaseTool {
     }
     return encodeURIComponent(value);
   });
-  return url;`
-        }
-      ],
-      classes: [
-        {
-          name: 'Api',
-          methods: functions,
-          properties: [
-            { name: 'request', type: 'AjaxRequest' }
-          ],
-          ctors: [
-            {
-              parameters: [
-                { name: 'request', type: 'AjaxRequest' }
-              ],
-              bodyText: 'this.request = request'
-            }
-          ],
-          isDefaultExport: true
-        }
-      ],
-      interfaces: [
-        {
-          name: 'AjaxRequest',
-          methods: [
-            {
-              name: '<T=any>',
-              parameters: [{ name: 'options', type: 'AjaxOptions' }],
-              returnType: 'Promise<T>'
-            }
-          ]
+  return url;`,
+          isExported: true
         },
-        {
-          name: 'AjaxOptions',
-          properties: [
-            { name: 'url', type: 'string' },
-            { name: 'method', type: 'string', hasQuestionToken: true },
-            { name: 'baseURL', type: 'string', hasQuestionToken: true },
-            { name: 'headers', type: 'any', hasQuestionToken: true },
-            { name: 'params', type: 'any', hasQuestionToken: true },
-            { name: 'data', type: 'any', hasQuestionToken: true },
-          ]
-        }
-      ]
+      ],
     })
   }
 
@@ -274,6 +348,19 @@ export default class ApiTool extends BaseTool {
         writer.write(` }`)
       }
     }
+  }
+
+  createTags(data: swaggerJson){
+    const path = `./tags.json`
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path)
+    }
+    const map: { [key: string]: string } = {}
+    data.tags.forEach(x => {
+      map[x.name] = x.name
+    })
+
+    fs.writeFileSync(path, JSON.stringify(map, null, '\n'))
   }
 
   getReturn(path: swaggerRequest, imports: ImportDeclarationStructure[]) {

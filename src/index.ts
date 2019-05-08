@@ -72,7 +72,10 @@ export interface Context {
 
 export interface ConfigDefinition {
   file: string
-  generic?: string[]
+  generic?: string[],
+  tags?: {
+    [key: string]: string
+  }
 }
 
 async function initProject(){
