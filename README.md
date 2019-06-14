@@ -43,19 +43,19 @@
 # sisyphus
 ```json
 {
-	"file": "http://localhost:8000/v2/api-docs", 
-	"generic": ["PageOutput", "ResultMessage"],
+  "file": "http://localhost:8000/v2/api-docs",
+  "generic": ["PageOutput", "ResultMessage"],
   "tags": {
-  	"信息相关": "message",
+    "信息相关": "message",
   }
 }
 ```
 
-`file` 表示swagger地址，可以是url或者file
+`file` 必填，表示swagger地址，可以是url或者file
 
-`generic` 表示泛型类，需要手动编写放在model文件。不填写generic，会将`Page<Data>` => `PageData`类型
+`generic` 可选，表示泛型类，需要手动编写放在model文件。不填写generic，会将`Page<Data>` => `PageData`类型
 
-`tags` 表示tag映射，如果tag是中文的最好映射一下
+`tags` 可选，表示tag映射，如果tag是中文的最好映射一下
 
 # QA
 
@@ -69,4 +69,4 @@ Q: 我遇到了中文的model怎么办？
 * [x] 优化注释
 * [x] 自动打包发布到npm，包含可以提示的d.ts
 * [ ] 自动生成浏览器可以用的js
-* [ ] 考虑泛型的优化
+* [x] 考虑泛型的优化
