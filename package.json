@@ -27,7 +27,7 @@
   "dependencies": {
     "@types/ejs": "^2.6.0",
     "@types/node": "^10.12.10",
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "commander": "^2.19.0",
     "debug": "^4.1.0",
     "ejs": "^2.6.1",
