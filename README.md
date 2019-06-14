@@ -52,7 +52,9 @@
 ```
 
 `file` 表示swagger地址，可以是url或者file
+
 `generic` 表示泛型类，需要手动编写放在model文件。不填写generic，会将`Page<Data>` => `PageData`类型
+
 `tags` 表示tag映射，如果tag是中文的最好映射一下
 
 # QA
