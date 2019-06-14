@@ -11,6 +11,7 @@ const scalarType = {
   'string': 'string',
   'boolean': 'boolean',
   'integer': 'number',
+  'number': 'number'
 }
 
 export default class ModelTool extends BaseTool{

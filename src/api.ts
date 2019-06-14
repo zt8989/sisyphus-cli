@@ -8,15 +8,21 @@ import { Context } from './index';
 import BaseTool from './baseTool'
 const logger = require('debug')('api')
 
-function handleOperationId(id: string){
+const retainWord = ['delete']
+function handleOperationId(id: string, tag: string){
+  let newId = id
   const preg = /Using\w+(_\d+)?$/
   if(preg.test(id)){
     const match = id.match(preg)
     if(match){
-      return id.slice(0, match.index)
+      newId = id.slice(0, match.index)
     }
   }
-  return id
+  // 如果是保留字，则加上组名
+  if(retainWord.indexOf(newId) !== -1){
+    newId = newId + tag
+  }
+  return newId
 }
 
 export default class ApiTool extends BaseTool {
@@ -39,28 +45,28 @@ export default class ApiTool extends BaseTool {
   }
 
   async genApis(project: Project, data: swaggerJson) {
-    this.createDefineFile(project)
+    this.createRequestFile(project)
     this.createTags(data)
 
     const defaultImports :ImportDeclarationStructure[] = [{
-      moduleSpecifier: './define',
-      namedImports: [ 'AjaxRequest', 'bindUrl', 'AjaxOptions' ]
+      moduleSpecifier: `../request`,
+      namedImports: ['bindUrl', 'request']
     }]
 
-    const indexImports :ImportDeclarationStructure[] = defaultImports
+    const indexImports :ImportDeclarationStructure[] = []
 
     for (let tag of data.tags) {
       const tagName = this.getTag(tag.name)
       const paths = data.paths
-      const functions: MethodDeclarationStructure[] = []
-      const imports: ImportDeclarationStructure[] = defaultImports
+      const functions: FunctionDeclarationStructure[] = []
+      const imports: ImportDeclarationStructure[] = [...defaultImports]
 
       this.importGenerics(imports)
       indexImports.push({
         moduleSpecifier: `./${tagName}`,
-        defaultImport: tagName
+        defaultImport: `* as ${tagName}`
       })
-
+   
       for (let url in paths) {
         const methods = paths[url]
         for (let method in methods) {
@@ -78,18 +84,19 @@ export default class ApiTool extends BaseTool {
           const parameters = this.getParameters(methods[method], imports, docs)
           logger('docs', docs)
           functions.push({
-            name: handleOperationId(methods[method].operationId),
+            name: handleOperationId(methods[method].operationId, tagName),
             parameters: Object.keys(parameters).map(x => parameters[x]),
             returnType: this.getReturn(methods[method], imports),
             bodyText: writer => {
-              writer.writeLine('return this.request({')
+              writer.writeLine(`return request({`)
                 .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
                 .writeLine(`method: '${method.toUpperCase()}',`)
                 .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams,`)
                 .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams,')
                 .writeLine('})')
             },
-            docs: docs.length > 0 ? [docs.join('\n')] : []
+            docs: docs.length > 0 ? [docs.join('\n')] : [],
+            isExported: true
           })
         }
       }
@@ -99,24 +106,7 @@ export default class ApiTool extends BaseTool {
       }
       const file = project.createSourceFile(path, {
         imports,
-        classes: [
-          {
-            name: 'Api',
-            methods: functions,
-            properties: [
-              { name: 'request', type: 'AjaxRequest' }
-            ],
-            ctors: [
-              {
-                parameters: [
-                  { name: 'request', type: 'AjaxRequest' }
-                ],
-                bodyText: 'this.request = request'
-              }
-            ],
-            isDefaultExport: true
-          }
-        ],
+        functions
       })
     }
   
@@ -125,26 +115,20 @@ export default class ApiTool extends BaseTool {
       fs.unlinkSync(path)
     }
 
-    let bodyText = 'return {\r\n'
+    let bodyText = 'export default {\r\n'
     data.tags.forEach(tag => {
       const tagName = this.getTag(tag.name)
-      bodyText += `${tagName}: new ${tagName}(request),\r\n`
+      bodyText += `\t${tagName},\r\n`
     })
     bodyText += '}'
     project.createSourceFile(path, {
       imports: indexImports,
-      functions: [
-        {
-          bodyText,
-          parameters: [{ name: 'request', type: 'AjaxRequest' }],
-          isDefaultExport: true
-        }
-      ]
+      bodyText: bodyText
     })
   }
 
-  createDefineFile(project: Project){
-    const path = `src/api/define.ts`
+  createRequestFile(project: Project){
+    const path = `src/request.ts`
     if (fs.existsSync(path)) {
       fs.unlinkSync(path)
     }
@@ -198,6 +182,15 @@ export default class ApiTool extends BaseTool {
   return url;`,
           isExported: true
         },
+        {
+        name: 'request',
+        parameters: [
+          { name: 'params', type: 'AjaxOptions' },
+        ],
+        bodyText: `return new Promise(() => {})`,
+        returnType: 'Promise<any>',
+        isExported: true
+      },
       ],
     })
   }

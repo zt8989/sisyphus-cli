@@ -37,7 +37,7 @@ program
   await new ApiTool(context).genApis(project, data)
   await genIndex(project)
   await project.save()
-  console.log('生成成功')
+  console.log('生成成功, 请修改src/request.ts的request方法实现！')
 })()
 
 async function genIndex(project: Project) {
