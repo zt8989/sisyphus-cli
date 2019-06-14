@@ -1,6 +1,6 @@
 # sisyphus-cli(西西弗斯)
 
-一个从swagger自动生成ts代码的工具
+一个从swagger自动生成ts,js代码的工具
 
 ## 为什么要使用这个？
 
@@ -37,64 +37,23 @@
 
 1. 进入相应文件夹如`xxx-api`
 2. 查看`sisyphus.json`文件file路径是否执行对应swagger的地址
-3. 执行`sisyphus`更新代码
-4. 执行`npm run build`打包
-5. 将dist的js和d.ts复制到项目或者使用`npm publish`发布
+3. 执行`sisyphus`生成ts
+4. 执行`npm run build`生成js
 
-# 原理
-
-`sisyphus-cli`会根据swagger.json生成类似代码
-
-```javascript
-class Api {
-  constructor(request){
-    this.request = request
-  }
-
-  function getDetail(pathParams, queryParams, bodyParams){
-    return this.request({
-      url: bindUrl('/detail', pathParams),
-      method: 'GET',
-      params: queryParams,
-      data: bodyParams
-    })
+# sisyphus
+```json
+{
+	"file": "http://localhost:8000/v2/api-docs", 
+	"generic": ["PageOutput", "ResultMessage"],
+  "tags": {
+  	"信息相关": "message",
   }
 }
 ```
 
-# 如何引入
-
-```javascript
-import Api from 'xxx-api';
-```
-
-## 编写适配器 
-
-由于生成的代码是按照axios的格式组织参数，所以针对不同的请求库，要做一层封装。
-以`fetch`为例
-
-```javascript
-function adapter(requestInstance) {
-  /**
-   *
-   * @param {AjaxOptions} options
-   */
-  return options => {
-    const baseUrl = '/api';
-    let { url } = options;
-    const { params, data, ...restParams } = options;
-    url = baseUrl + url;
-    if (params) {
-      url = `${url}?${stringify(params)}`;
-    }
-    return requestInstance(url, { ...restParams, body: data });
-  };
-}
-
-const api = new Api(adapter(request));
-
-api.login({ useraname: xxx, password: xxx }).then(res => {})
-```
+`file` 表示swagger地址，可以是url或者file
+`generic` 表示泛型类，需要手动编写放在model文件。不填写generic，会将`Page<Data>` => `PageData`类型
+`tags` 表示tag映射，如果tag是中文的最好映射一下
 
 # QA
 
