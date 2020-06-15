@@ -1,12 +1,11 @@
 {
-  "name": "my-ts-project",
+  "name": "sisyphus-ts-project",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
   "private": false,
-  "publisher": "wbjqiqi@163.com",
   "scripts": {
     "build": "tsc",
     "test": "jest"
@@ -21,7 +20,6 @@
   "keywords": [
     "my-ts"
   ],
-  "author": "wbjqiqi@163.com",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^23.3.1",
