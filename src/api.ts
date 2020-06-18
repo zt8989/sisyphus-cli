@@ -238,21 +238,21 @@ export default class ApiTool extends BaseTool {
             type,
           }
           docs.push(`@param {${type}} bodyParams - ${param.description}`)
-        } else if (param.schema.type === 'array' && param.schema.items.$ref) {
+        } else if (param.schema.type === 'array' && param.schema.items && param.schema.items.$ref) {
           // 其他类型参数-array
           const type = this.checkAndAddImport(param.schema.$ref, imports)
           result['bodyParams'] = {
             name: 'bodyParams',
             type: type + '[]',
           }
-          docs.push(`@param {${type}[]} bodyParams - ${param.description}`)
+          docs.push(`@param {${type}}[] bodyParams - ${param.description}`)
         } else {
           // 其他类型参数-object
           result['bodyParams'] = {
             name: 'bodyParams',
             type: 'any',
           }
-          docs.push(`@param {any} bodyParams - ${param.description}`)
+          docs.push(`@param any bodyParams - ${param.description}`)
         }
       }
     }
