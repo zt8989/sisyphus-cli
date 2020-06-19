@@ -127,10 +127,15 @@ export default class ApiTool extends BaseTool {
     })
   }
 
+  /**
+   * 生成request.ts
+   * @param project 
+   */
   createRequestFile(project: Project){
     const path = `src/request.ts`
     if (fs.existsSync(path)) {
-      fs.unlinkSync(path)
+      // fs.unlinkSync(path)
+      return
     }
     
     project.createSourceFile(path, {
