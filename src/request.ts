@@ -38,7 +38,14 @@ export interface swaggerParameter {
   }
   schema: {
     $ref: string
+    type: string
+    items: swaggerRefDefinition
   }
+}
+
+export interface swaggerRefDefinition {
+  $ref: string
+  originalRef: string
 }
 
 export interface swaggerDefinitions {
