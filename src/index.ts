@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import axios from 'axios'
 import request from './request'
 import { Project } from 'ts-simple-ast'
 import ModelTool from './model';
@@ -9,9 +8,8 @@ import fs from 'fs'
 import ApiTool from './api';
 import path from 'path'
 import { promisify } from 'util'
-import ejs, { Data } from 'ejs'
+import ejs from 'ejs'
 
-const logger = require('debug')('index')
 
 program
   .version('1.0.0')

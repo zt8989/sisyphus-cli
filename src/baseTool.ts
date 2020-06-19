@@ -1,7 +1,6 @@
 import { Context } from "./index";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
 import { ImportDeclarationStructure } from "ts-simple-ast";
-import { scalarType } from "./utils/enum";
 
 export default class BaseTool {
   protected context: Context

@@ -1,5 +1,5 @@
 import { Context } from './index';
-import { swaggerDefinitions, swaggerDefinition, swaggerJson } from './request';
+import { swaggerDefinition, swaggerJson } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 import ModelNameParser from './utils/modelNameParser'
@@ -33,7 +33,7 @@ export default class ModelTool extends BaseTool{
         }
         const imports: ImportDeclarationStructure[] = []
         const properties = this.getProperties(definition, imports, modelName)
-        const file = project.createSourceFile(path, {
+        project.createSourceFile(path, {
           imports: imports,
           interfaces: [
             {
@@ -127,7 +127,7 @@ export default class ModelTool extends BaseTool{
 
   }
 
-  _getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
+  _getProperties() {
 
   }
 }

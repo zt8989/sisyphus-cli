@@ -1,11 +1,9 @@
-import { swaggerDefinitions, swaggerDefinition, swaggerJson, swaggerParameter, swaggerRequest } from './request';
-import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, MethodDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter } from 'ts-simple-ast';
+import { swaggerDefinition, swaggerJson, swaggerParameter, swaggerRequest } from './request';
+import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter } from 'ts-simple-ast';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
-import axios from 'axios'
-import ModelNameParser from './utils/modelNameParser';
-import { Context } from './index';
 import BaseTool from './baseTool'
+import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
 const logger = require('debug')('api')
 
 const retainWord = ['delete']
@@ -85,14 +83,14 @@ export default class ApiTool extends BaseTool {
           logger('docs', docs)
           functions.push({
             name: handleOperationId(methods[method].operationId, tagName),
-            parameters: Object.keys(parameters).map(x => parameters[x]),
+            parameters: this.handleFunctionParameters(parameters),
             returnType: this.getReturn(methods[method], imports),
             bodyText: writer => {
               writer.writeLine(`return request({`)
-                .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty('pathParams') ? 'pathParams' : '{}'}),`)
+                .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
                 .writeLine(`method: '${method.toUpperCase()}',`)
-                .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams,`)
-                .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams,')
+                .conditionalWriteLine(parameters.hasOwnProperty(BODY_PARAMS), () => `data: ${BODY_PARAMS},`)
+                .conditionalWriteLine(parameters.hasOwnProperty(QUERY_PARAMS), () => `params: ${QUERY_PARAMS},`)
                 .writeLine('})')
             },
             docs: docs.length > 0 ? [docs.join('\n')] : [],
@@ -104,7 +102,7 @@ export default class ApiTool extends BaseTool {
       if (fs.existsSync(path)) {
         fs.unlinkSync(path)
       }
-      const file = project.createSourceFile(path, {
+      project.createSourceFile(path, {
         imports,
         functions
       })
@@ -125,6 +123,13 @@ export default class ApiTool extends BaseTool {
       imports: indexImports,
       bodyText: bodyText
     })
+  }
+
+  /**
+   * 处理方法参数
+   */
+  handleFunctionParameters(parameters: { [key: string]: ParameterDeclarationStructure }) {
+    return Object.keys(parameters).map(x => parameters[x])
   }
 
   /**
@@ -169,7 +174,7 @@ export default class ApiTool extends BaseTool {
           name: 'bindUrl',
           parameters: [
             { name: 'path', type: 'string' },
-            { name: 'pathParams', type: 'any' }
+            { name: PATH_PARAMS, type: 'any' }
           ],
           bodyText: `if (!path.match(/^\\//)) {
     path = '/' + path;
@@ -206,7 +211,7 @@ export default class ApiTool extends BaseTool {
 
     const pathParameters = parameters.filter(x => x.in === 'path')
     if (pathParameters.length > 0) {
-      const name = 'pathParams'
+      const name = PATH_PARAMS
       docs.push(`@param {Object} ${name}`)
       this.getParameterDocs(name, pathParameters, docs)
       result[name] = {
@@ -238,26 +243,26 @@ export default class ApiTool extends BaseTool {
       if (param.in === 'body') {
         if (param.schema.$ref) {
           const type = this.checkAndAddImport(param.schema.$ref, imports)
-          result['bodyParams'] = {
-            name: 'bodyParams',
+          result[BODY_PARAMS] = {
+            name: BODY_PARAMS,
             type,
           }
-          docs.push(`@param {${type}} bodyParams - ${param.description}`)
+          docs.push(`@param {${type}} ${BODY_PARAMS} - ${param.description}`)
         } else if (param.schema.type === 'array' && param.schema.items && param.schema.items.$ref) {
           // 其他类型参数-array
           const type = this.checkAndAddImport(param.schema.$ref, imports)
-          result['bodyParams'] = {
-            name: 'bodyParams',
+          result[BODY_PARAMS] = {
+            name: BODY_PARAMS,
             type: type + '[]',
           }
-          docs.push(`@param {${type}}[] bodyParams - ${param.description}`)
+          docs.push(`@param {${type}}[] ${BODY_PARAMS} - ${param.description}`)
         } else {
           // 其他类型参数-object
-          result['bodyParams'] = {
-            name: 'bodyParams',
+          result[BODY_PARAMS] = {
+            name: BODY_PARAMS,
             type: 'any',
           }
-          docs.push(`@param any bodyParams - ${param.description}`)
+          docs.push(`@param any ${BODY_PARAMS} - ${param.description}`)
         }
       }
     }
@@ -273,7 +278,7 @@ export default class ApiTool extends BaseTool {
       docs.push(`@param {${type}} ${name} - ${desc}`)
     }
 
-    normalParameters.forEach((p, i) => {
+    normalParameters.forEach((p) => {
       if (Reflect.has(scalarType, p.type)) {
         addDocs(Reflect.get(scalarType, p.type), `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
       } else if (p.type === 'array') {
@@ -452,7 +457,7 @@ export default class ApiTool extends BaseTool {
 
   }
 
-  _getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
+  _getProperties() {
 
   }
 
