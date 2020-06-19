@@ -22,6 +22,7 @@ export interface swaggerRequest {
       "200": {
         schema: {
           $ref: string
+          type: string
         }
       }
     }
