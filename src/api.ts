@@ -74,6 +74,7 @@ export default class ApiTool extends BaseTool {
             break
           }
           const docs = []
+          const headers : {[key: string]: string} = {}
           if (methods[method].summary) {
             docs.push(methods[method].summary)
           }
@@ -81,7 +82,7 @@ export default class ApiTool extends BaseTool {
             docs.push(methods[method].description)
           }
           docs.push(`${method.toUpperCase()} ${url}`)
-          const parameters = this.getParameters(methods[method], imports, docs)
+          const parameters = this.getParameters(methods[method], imports, docs, headers)
           logger('docs', docs)
           functions.push({
             name: handleOperationId(methods[method].operationId, tagName),
@@ -93,6 +94,7 @@ export default class ApiTool extends BaseTool {
                 .writeLine(`method: '${method.toUpperCase()}',`)
                 .conditionalWriteLine(parameters.hasOwnProperty('bodyParams'), () => `data: bodyParams,`)
                 .conditionalWriteLine(parameters.hasOwnProperty('queryParams'), () => 'params: queryParams,')
+                .conditionalWriteLine(Object.keys(headers).length > 0 , () => `headers: ${JSON.stringify(headers)},`)
                 .writeLine('})')
             },
             docs: docs.length > 0 ? [docs.join('\n')] : [],
@@ -195,7 +197,7 @@ export default class ApiTool extends BaseTool {
     })
   }
 
-  getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[]) {
+  getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string}) {
     const result: { [key: string]: ParameterDeclarationStructure } = {}
     const parameters = path.parameters || []
 
@@ -245,15 +247,27 @@ export default class ApiTool extends BaseTool {
             name: 'bodyParams',
             type: type + '[]',
           }
-          docs.push(`@param {${type}}[] bodyParams - ${param.description}`)
+          docs.push(`@param {${type}[]} bodyParams - ${param.description}`)
         } else {
           // 其他类型参数-object
           result['bodyParams'] = {
-            name: 'bodyParams',
+            name: 'bodyParams', 
             type: 'any',
           }
           docs.push(`@param any bodyParams - ${param.description}`)
         }
+      } else if (param.in === 'formData') {
+        // api包含formData：如文件
+        if (param.type === 'file') {
+          result['bodyParams'] = {
+            name: 'bodyParams', 
+            type: 'FormData',
+          }
+          docs.push(`@param FormData bodyParams - ${param.description}`)
+          headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        }
+      } else {
+        // other
       }
     }
     return result
