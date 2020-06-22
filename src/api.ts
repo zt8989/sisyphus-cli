@@ -72,6 +72,7 @@ export default class ApiTool extends BaseTool {
             break
           }
           const docs = []
+          const headers : {[key: string]: string} = {}
           if (methods[method].summary) {
             docs.push(methods[method].summary)
           }
@@ -79,7 +80,8 @@ export default class ApiTool extends BaseTool {
             docs.push(methods[method].description)
           }
           docs.push(`${method.toUpperCase()} ${url}`)
-          const parameters = this.getParameters(methods[method], imports, docs)
+          const parameters = this.getParameters(methods[method], imports, docs, headers)
+          const isDownload = this.isDownloadApi(methods[method])
           logger('docs', docs)
           functions.push({
             name: handleOperationId(methods[method].operationId, tagName),
@@ -91,6 +93,8 @@ export default class ApiTool extends BaseTool {
                 .writeLine(`method: '${method.toUpperCase()}',`)
                 .conditionalWriteLine(parameters.hasOwnProperty(BODY_PARAMS), () => `data: ${BODY_PARAMS},`)
                 .conditionalWriteLine(parameters.hasOwnProperty(QUERY_PARAMS), () => `params: ${QUERY_PARAMS},`)
+                .conditionalWriteLine(Object.keys(headers).length > 0 , () => `headers: ${JSON.stringify(headers)},`)
+                .conditionalWriteLine(isDownload, () => `responseType: 'blob',`)
                 .writeLine('})')
             },
             docs: docs.length > 0 ? [docs.join('\n')] : [],
@@ -98,6 +102,7 @@ export default class ApiTool extends BaseTool {
           })
         }
       }
+
       const path = `src/api/${tagName}.ts`
       if (fs.existsSync(path)) {
         fs.unlinkSync(path)
@@ -165,6 +170,7 @@ export default class ApiTool extends BaseTool {
             { name: 'headers', type: 'any', hasQuestionToken: true },
             { name: 'params', type: 'any', hasQuestionToken: true },
             { name: 'data', type: 'any', hasQuestionToken: true },
+            { name: 'responseType', type: 'string', hasQuestionToken: true },
           ],
           isExported: true
         }
@@ -205,7 +211,7 @@ export default class ApiTool extends BaseTool {
     })
   }
 
-  getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[]) {
+  getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string}) {
     const result: { [key: string]: ParameterDeclarationStructure } = {}
     const parameters = path.parameters || []
 
@@ -255,7 +261,7 @@ export default class ApiTool extends BaseTool {
             name: BODY_PARAMS,
             type: type + '[]',
           }
-          docs.push(`@param {${type}}[] ${BODY_PARAMS} - ${param.description}`)
+          docs.push(`@param {${type}[]} ${BODY_PARAMS} - ${param.description}`)
         } else {
           // 其他类型参数-object
           result[BODY_PARAMS] = {
@@ -264,9 +270,34 @@ export default class ApiTool extends BaseTool {
           }
           docs.push(`@param any ${BODY_PARAMS} - ${param.description}`)
         }
+      } else if (param.in === 'formData') {
+        // api包含formData：如文件
+        if (param.type === 'file') {
+          result['bodyParams'] = {
+            name: 'bodyParams', 
+            type: 'FormData',
+          }
+          docs.push(`@param FormData bodyParams - ${param.description}`)
+          headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        }
+      } else {
+        // other
       }
     }
     return result
+  }
+
+  isDownloadApi(path: swaggerRequest) {
+    // 下载相关接口
+    if (path.responses[200]) {
+      const schema = path.responses[200].schema
+      if (schema && schema.type === 'file') {
+        return true
+      } else {
+        // other
+      }
+    }
+    return false
   }
 
   getParameterDocs(name: string, parameters: swaggerParameter[], docs: string[], isArray: boolean = false) {
@@ -388,11 +419,12 @@ export default class ApiTool extends BaseTool {
       if (schema && schema.$ref) {
         const type = this.checkAndReturnType(schema.$ref, imports)
         return `Promise<${type}>`
+      } else {
+        // other
       }
     }
     return "Promise<any>"
   }
-
 
   getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
     const properties: PropertyDeclarationStructure[] = []
