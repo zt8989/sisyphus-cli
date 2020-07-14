@@ -256,7 +256,7 @@ export default class ApiTool extends BaseTool {
           docs.push(`@param {${type}} ${BODY_PARAMS} - ${param.description}`)
         } else if (param.schema.type === 'array' && param.schema.items && param.schema.items.$ref) {
           // 其他类型参数-array
-          const type = this.checkAndAddImport(param.schema.$ref, imports)
+          const type = this.checkAndAddImport(param.schema.items.$ref, imports)
           result[BODY_PARAMS] = {
             name: BODY_PARAMS,
             type: type + '[]',
