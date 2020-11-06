@@ -96,7 +96,7 @@ export default class ModelNameParser {
       return true
     }
     if(this.data && this.data.children.length === 0) {
-      this.data = { name: "", children: [] }
+      this.data = { name: "object", children: [] }
       return true
     }
     throw new Error('unpack error')

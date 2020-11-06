@@ -50,7 +50,8 @@ module.exports = {
   },
   nameStrategy(sr, tag, url){
     return sr.operationId
-  }
+  },
+  unpackResponse: true
 }
 ```
 
@@ -61,6 +62,8 @@ module.exports = {
 `tags` 可选，表示tag映射，如果tag是中文的最好映射一下
 
 `nameStrategy` 可选，命名策略， `sr`类型下处展示，`tag`表示标签分类, `url`表示请求路径
+
+`unpackResponse` 可选，响应结果解包，比如 `Promise<Result<BaseVo>>` => `Promise<BaseVo>`
 
 ```typescript
 export interface swaggerRequest {
@@ -100,3 +103,4 @@ Q: 我遇到了中文的model怎么办？
 * 0.15 如果request.ts已存在则不覆盖
 * 0.16 修复解析数组的报错的bug
 * 0.17 增加命名策略
+* 0.18 增加命名策略

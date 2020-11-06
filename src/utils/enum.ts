@@ -6,7 +6,6 @@ export const scalarType = {
   'long': 'number',
   'Void': 'null',
   'object': 'any',
-  '': 'any'
 }
 
 export const scalarTypeS = {

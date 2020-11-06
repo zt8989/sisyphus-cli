@@ -422,7 +422,7 @@ export default class ApiTool extends BaseTool {
     if (path.responses[200]) {
       const schema = path.responses[200].schema
       if (schema && schema.$ref) {
-        const type = this.checkAndReturnType(schema.$ref, imports)
+        const type = this.checkAndReturnType(schema.$ref, imports, [], this.context.config.unpackResponse)
         return `Promise<${type}>`
       } else {
         // other

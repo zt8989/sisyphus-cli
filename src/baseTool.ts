@@ -2,6 +2,8 @@ import { Context } from "./index";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
 import { ImportDeclarationStructure } from "ts-simple-ast";
 
+const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
+
 export default class BaseTool {
   protected context: Context
 
@@ -40,7 +42,6 @@ export default class BaseTool {
   }
 
   importGeneric(data: ModelStruct, imports: ImportDeclarationStructure[]) {
-    const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
     data.children
       .forEach(i => {
         if (filterList.indexOf(i.name) === -1) {
@@ -85,16 +86,18 @@ export default class BaseTool {
     }
   }
 
-  _checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
+  _checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = [], unpack: boolean = false) {
     const [isGeneric, parser] = this.getModelType(ref)
     if (isGeneric) {
-      if(this.context.config.unpackResponse) {
+      if(unpack) {
         parser.unpack()
       }
       const data = parser.getData()
       const moduleSpecifier = this.getRelativePath(data.name)
       const importName = parser.asGenericString()
-      if (!exclude.some(name => name === ref ) && !imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
+      if (!exclude.some(name => name === ref ) 
+          && !imports.some(i => i.moduleSpecifier === moduleSpecifier) 
+            && filterList.indexOf(data.name) === -1) {
         imports.push({
           moduleSpecifier,
           defaultImport: data.name
@@ -120,7 +123,7 @@ export default class BaseTool {
     return this._checkAndAddImport(ref.slice('#/definitions/'.length), imports, exclude)
   }
 
-  checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
-    return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports, exclude)
+  checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = [], unpack: boolean = false) {
+    return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports, exclude, unpack)
   }
 }
