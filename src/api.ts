@@ -7,23 +7,28 @@ import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
 const logger = require('debug')('api')
 
 const retainWord = ['delete']
-function handleOperationId(id: string, tag: string){
-  let newId = id
-  const preg = /Using\w+(_\d+)?$/
-  if(preg.test(id)){
-    const match = id.match(preg)
-    if(match){
-      newId = id.slice(0, match.index)
-    }
-  }
-  // 如果是保留字，则加上组名
-  if(retainWord.indexOf(newId) !== -1){
-    newId = newId + tag
-  }
-  return newId
-}
 
 export default class ApiTool extends BaseTool {
+
+  handleOperationId(sr: swaggerRequest, tag: string, url: string){
+    if(this.context.config.nameStrategy) {
+      return this.context.config.nameStrategy(sr, tag, url)
+    }
+    let id = sr.operationId
+    let newId = sr.operationId
+    const preg = /Using\w+(_\d+)?$/
+    if(preg.test(id)){
+      const match = id.match(preg)
+      if(match){
+        newId = id.slice(0, match.index)
+      }
+    }
+    // 如果是保留字，则加上组名
+    if(retainWord.indexOf(newId) !== -1){
+      newId = newId + tag
+    }
+    return newId
+  }
 
   /**
    * 预先加载泛型类
@@ -84,7 +89,7 @@ export default class ApiTool extends BaseTool {
           const isDownload = this.isDownloadApi(methods[method])
           logger('docs', docs)
           functions.push({
-            name: handleOperationId(methods[method].operationId, tagName),
+            name: this.handleOperationId(methods[method], tagName, url),
             parameters: this.handleFunctionParameters(parameters),
             returnType: this.getReturn(methods[method], imports),
             bodyText: writer => {

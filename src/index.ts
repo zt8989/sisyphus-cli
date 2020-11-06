@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import request from './request'
+import request, { swaggerRequest } from './request'
 import { Project } from 'ts-simple-ast'
 import ModelTool from './model';
 import program from 'commander'
@@ -51,7 +51,9 @@ async function genIndex(project: Project) {
 async function getData(config: any) {
   let data
   if (config.file.startsWith('http')) {
+    console.log('downloading swagger json')
     data = await request(config.file)
+    console.log('downloaded swagger json')
   } else {
     const json = await promisify(fs.readFile)(config.file, { encoding: 'utf8' })
     data = JSON.parse(json)
@@ -73,7 +75,8 @@ export interface ConfigDefinition {
   generic?: string[],
   tags?: {
     [key: string]: string
-  }
+  },
+  nameStrategy?: (sr: swaggerRequest, tag: string, url: string) => string
 }
 
 async function initProject(){
@@ -90,12 +93,20 @@ async function initProject(){
 }
 
 function getConfig() {
-  const configFile = program.config || path.resolve(process.cwd() ,'sisyphus.json')
-  if (!fs.existsSync(configFile)) {
-    console.error('请确认配置文件是否存在!如果未执行初始化，请执行sisyphus --init project-name')
+  const configFile1 = program.config || path.resolve(process.cwd() ,'sisyphus.js')
+  const configFile2 = program.config || path.resolve(process.cwd() ,'sisyphus.json')
+  
+  if (!fs.existsSync(configFile1) && !fs.existsSync(configFile2)) {
+    console.error('请确认配置文件是否存在!如果未执行初始化，请执行sisyphus init project-name')
     return false
   }
-  const configJson = require(configFile) as ConfigDefinition
+  let configJson
+  if(configFile1){
+    configJson = require(configFile1) as ConfigDefinition
+  } else {
+    configJson = require(configFile2) as ConfigDefinition
+  }
+   
   if (!configJson.file) {
     console.error('请检查配置文件是否正确！')
     return false

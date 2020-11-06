@@ -36,17 +36,20 @@
 ## 如何更新代码
 
 1. 进入相应文件夹如`xxx-api`
-2. 查看`sisyphus.json`文件file路径是否执行对应swagger的地址
+2. 查看`sisyphus.js`文件file路径是否执行对应swagger的地址
 3. 执行`sisyphus`生成ts
 4. 执行`npm run build`生成js
 
 # sisyphus
-```json
-{
+```javascript
+module.exports = {
   "file": "http://localhost:8000/v2/api-docs",
   "generic": ["PageOutput", "ResultMessage"],
   "tags": {
     "信息相关": "message",
+  },
+  nameStrategy(sr, tag, url){
+    return sr.operationId
   }
 }
 ```
@@ -56,6 +59,26 @@
 `generic` 可选，表示泛型类，需要手动编写放在model文件。不填写generic，会将`Page<Data>` => `PageData`类型
 
 `tags` 可选，表示tag映射，如果tag是中文的最好映射一下
+
+`nameStrategy` 可选，命名策略， `sr`类型下处展示，`tag`表示标签分类, `url`表示请求路径
+
+```typescript
+export interface swaggerRequest {
+    tags: string[]
+    summary: string
+    description: string
+    operationId: string
+    parameters: swaggerParameter[]
+    responses: {
+      "200": {
+        schema: {
+          $ref: string
+          type: string
+        }
+      }
+    }
+}
+```
 
 # QA
 
@@ -75,3 +98,5 @@ Q: 我遇到了中文的model怎么办？
 # 更新日志
 
 * 0.15 如果request.ts已存在则不覆盖
+* 0.16 修复解析数组的报错的bug
+* 0.17 增加命名策略
