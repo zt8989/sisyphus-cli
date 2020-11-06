@@ -76,6 +76,7 @@ export interface ConfigDefinition {
   tags?: {
     [key: string]: string
   },
+  unpackResponse?: boolean,
   nameStrategy?: (sr: swaggerRequest, tag: string, url: string) => string
 }
 

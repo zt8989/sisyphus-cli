@@ -88,6 +88,9 @@ export default class BaseTool {
   _checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
     const [isGeneric, parser] = this.getModelType(ref)
     if (isGeneric) {
+      if(this.context.config.unpackResponse) {
+        parser.unpack()
+      }
       const data = parser.getData()
       const moduleSpecifier = this.getRelativePath(data.name)
       const importName = parser.asGenericString()

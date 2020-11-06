@@ -90,6 +90,18 @@ export default class ModelNameParser {
     return this.data
   }
 
+  unpack(){
+    if(this.data && this.data.children.length === 1) {
+      this.data = this.data.children[0]
+      return true
+    }
+    if(this.data && this.data.children.length === 0) {
+      this.data = { name: "", children: [] }
+      return true
+    }
+    throw new Error('unpack error')
+  }
+
   parse() {
     const data: ModelStruct = { name: "", children: [] }
     let ref: ModelStruct = data
