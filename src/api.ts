@@ -4,19 +4,26 @@ import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
-import { join } from 'path';
+import { join, ParsedPath, parse } from 'path';
+import * as changeCase from "change-case";
 const logger = require('debug')('api')
 
 const retainWord = ['delete']
 
+export type RenameOption = {
+  swaggerRequest: swaggerRequest, tagName: string, url:string, method:string,
+  parsedPath: ParsedPath
+}
+
 export default class ApiTool extends BaseTool {
 
-  handleOperationId(sr: swaggerRequest, tag: string, url: string){
+  handleOperationId(option: RenameOption){
+    const { swaggerRequest, tagName } = option
     if(this.context.config.nameStrategy) {
-      return this.context.config.nameStrategy(sr, tag, url)
+      return this.context.config.nameStrategy(option, changeCase)
     }
-    let id = sr.operationId
-    let newId = sr.operationId
+    let id = swaggerRequest.operationId
+    let newId = swaggerRequest.operationId
     const preg = /Using\w+(_\d+)?$/
     if(preg.test(id)){
       const match = id.match(preg)
@@ -26,7 +33,7 @@ export default class ApiTool extends BaseTool {
     }
     // 如果是保留字，则加上组名
     if(retainWord.indexOf(newId) !== -1){
-      newId = newId + tag
+      newId = newId + tagName
     }
     return newId
   }
@@ -90,7 +97,13 @@ export default class ApiTool extends BaseTool {
           const isDownload = this.isDownloadApi(methods[method])
           logger('docs', docs)
           functions.push({
-            name: this.handleOperationId(methods[method], tagName, url),
+            name: this.handleOperationId({
+              swaggerRequest: methods[method], 
+              tagName, 
+              url, 
+              method,
+              parsedPath: parse(url)
+            }),
             parameters: this.handleFunctionParameters(parameters),
             returnType: this.getReturn(methods[method], imports),
             bodyText: writer => {

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-import request, { swaggerRequest } from './request'
+import request from './request'
 import { Project } from 'ts-simple-ast'
 import ModelTool from './model';
 import program from 'commander'
 import fs from 'fs'
-import ApiTool from './api';
+import ApiTool, { RenameOption } from './api';
 import path, { join } from 'path'
 import { promisify } from 'util'
 import ejs from 'ejs'
@@ -94,7 +94,7 @@ export interface ConfigDefinition {
     [key: string]: string
   },
   unpackResponse?: boolean,
-  nameStrategy?: (sr: swaggerRequest, tag: string, url: string) => string,
+  nameStrategy?: (option: RenameOption, changeCase: any) => string,
   optionalQuery?: boolean,
   appendOptions?: boolean
   onlyModel?: boolean
