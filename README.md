@@ -51,7 +51,10 @@ module.exports = {
   nameStrategy(sr, tag, url){
     return sr.operationId
   },
-  unpackResponse: true
+  unpackResponse: true,
+  optionalQuery: false,
+  appendOptions: true,
+  onlyModel: true
 }
 ```
 
@@ -64,6 +67,11 @@ module.exports = {
 `nameStrategy` 可选，命名策略， `sr`类型下处展示，`tag`表示标签分类, `url`表示请求路径
 
 `unpackResponse` 可选，响应结果解包，比如 `Promise<Result<BaseVo>>` => `Promise<BaseVo>`
+
+`optionalQuery` 可选，将所有query属性转为option
+`appendOptions`: 可选，增加额外的options, `function abc() { return request({}) }` => `function abc(options?: any) { return request({ ...options }) }`
+
+`onlyModel` 可选，只生成model
 
 ```typescript
 export interface swaggerRequest {
