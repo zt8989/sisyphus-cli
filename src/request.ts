@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 export interface swaggerJson {
+  basePath: string
   definitions: swaggerDefinitions
   tags: { name: string, description: string }[]
   paths: {
@@ -34,6 +35,7 @@ export interface swaggerParameter {
   description: string
   required: boolean
   type: string
+  enum?: string[]
   items: {
     type: string
   }
@@ -59,6 +61,7 @@ export interface swaggerDefinition {
     properties: {
       [key: string]: {
         type?: string
+        enum?: string[] 
         description: string
         $ref?: string
         items: swaggerProperty

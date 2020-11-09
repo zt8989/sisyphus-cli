@@ -6,9 +6,10 @@ import ModelTool from './model';
 import program from 'commander'
 import fs from 'fs'
 import ApiTool from './api';
-import path from 'path'
+import path, { join } from 'path'
 import { promisify } from 'util'
 import ejs from 'ejs'
+import { exec } from 'child_process';
 
 
 program
@@ -24,20 +25,35 @@ program
   }
   const config = getConfig()
   if (config === false) return
-  const data = await getData(config)
-  if (data === false) return
-  const project = new Project()
-  const context: Context = {
-    config,
-    hasGeneric: false
+
+  if(!config.outDir) {
+    config.outDir = './src/api'
   }
-  await new ModelTool(context).genModels(project, data, context)
-  await new ApiTool(context).genApis(project, data)
-  await genIndex(project)
-  await project.save()
-  console.log('生成成功, 请修改src/request.ts的request方法实现！')
+
+  const files = Array.isArray(config.file) ? config.file : [config.file]
+  for(let file of files){
+    const data = await getData(file)
+    if (data === false) return
+    const project = new Project()
+    const context: Context = {
+      config,
+      hasGeneric: false
+    }
+    await new ModelTool(context).genModels(project, data, context)
+    if(!config.onlyModel) {
+      await new ApiTool(context).genApis(project, data)
+    }
+    // await genIndex(project)
+    await project.save()
+  }
+  const prettier = path.resolve(process.cwd() ,'./node_modules/.bin/prettier')
+  if(fs.existsSync(prettier)){
+    exec(`${prettier} --write ${config.outDir}`)
+  }
+  console.log(`生成成功, 请修改${join(config.outDir, 'request.ts')}的request方法实现！`)
 })()
 
+// @ts-ignore
 async function genIndex(project: Project) {
   if(!fs.existsSync('src')){
     await promisify(fs.mkdir)('src')
@@ -48,14 +64,14 @@ async function genIndex(project: Project) {
   }
 }
 
-async function getData(config: any) {
+async function getData(file: string) {
   let data
-  if (config.file.startsWith('http')) {
-    console.log('downloading swagger json')
-    data = await request(config.file)
-    console.log('downloaded swagger json')
+  if (file.startsWith('http')) {
+    console.log('downloading swagger json from ' + file)
+    data = await request(file)
+    console.log('downloaded swagger json from ' + file)
   } else {
-    const json = await promisify(fs.readFile)(config.file, { encoding: 'utf8' })
+    const json = await promisify(fs.readFile)(file, { encoding: 'utf8' })
     data = JSON.parse(json)
   }
   if (!data) {
@@ -71,13 +87,17 @@ export interface Context {
 }
 
 export interface ConfigDefinition {
-  file: string
+  file: string | string[],
+  outDir: string,
   generic?: string[],
   tags?: {
     [key: string]: string
   },
   unpackResponse?: boolean,
-  nameStrategy?: (sr: swaggerRequest, tag: string, url: string) => string
+  nameStrategy?: (sr: swaggerRequest, tag: string, url: string) => string,
+  optionalQuery?: boolean,
+  appendOptions?: boolean
+  onlyModel?: boolean
 }
 
 async function initProject(){
@@ -107,16 +127,20 @@ function getConfig() {
   } else {
     configJson = require(configFile2) as ConfigDefinition
   }
+
+  const files = Array.isArray(configJson.file) ? configJson.file : [configJson.file]
    
-  if (!configJson.file) {
-    console.error('请检查配置文件是否正确！')
-    return false
-  }
-
-
-  if (!configJson.file.startsWith('http') && !fs.existsSync(configJson.file)) {
-    console.error('请确认json文件是否存在!')
-    return false
+  for(let file of files){
+    if (!file) {
+      console.error('请检查配置文件是否正确！')
+      return false
+    }
+  
+  
+    if (!file.startsWith('http') && !fs.existsSync(file)) {
+      console.error('请确认json文件是否存在!')
+      return false
+    }
   }
 
   return configJson

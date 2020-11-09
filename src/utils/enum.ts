@@ -3,6 +3,7 @@ export const scalarType = {
   'boolean': 'boolean',
   'integer': 'number',
   'int': 'number',
+  'number': 'number',
   'long': 'number',
   'Void': 'null',
   'object': 'any',

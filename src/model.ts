@@ -4,6 +4,7 @@ import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } fro
 import fs from 'fs'
 import ModelNameParser from './utils/modelNameParser'
 import BaseTool from './baseTool'
+import { join } from 'path';
 
 const logger = require('debug')('model')
 
@@ -20,14 +21,14 @@ export default class ModelTool extends BaseTool{
     const definitions = data.definitions
     let genericList: string[] = []
     if (context.config.generic) {
-      genericList = context.config.generic.filter(x => fs.existsSync(`src/model/${x}.ts`))
+      genericList = context.config.generic.filter(x => fs.existsSync(join(this.context.config.outDir, `model/${x}.ts`)))
       this.context.config.generic = genericList
     }
     for (let defineName in definitions) {
       const definition = definitions[defineName]
       let modelName = this.checkAndModifyModelName(defineName)
       if (modelName !== false) {
-        const path = `src/model/${modelName}.ts`
+        const path = join(this.context.config.outDir, `model/${modelName}.ts`)
         if (fs.existsSync(path)) {
           fs.unlinkSync(path)
         }
@@ -80,9 +81,15 @@ export default class ModelTool extends BaseTool{
 
         if (prop.type) {
           if (Reflect.has(scalarType, prop.type)) {
+            let type 
+            if(prop.type === scalarType.string && Array.isArray(prop.enum)) {
+              type = prop.enum.map(x => `'${x}'`).join(' | ')
+            } else {
+              type = Reflect.get(scalarType, prop.type)
+            }
             properties.push({
               name: propName,
-              type: Reflect.get(scalarType, prop.type),
+              type: type,
               docs: prop.description ? [prop.description] : []
             })
           } else if (prop.type === 'array') {

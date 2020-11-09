@@ -4,6 +4,7 @@ import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
+import { join } from 'path';
 const logger = require('debug')('api')
 
 const retainWord = ['delete']
@@ -52,7 +53,7 @@ export default class ApiTool extends BaseTool {
     this.createTags(data)
 
     const defaultImports :ImportDeclarationStructure[] = [{
-      moduleSpecifier: `../request`,
+      moduleSpecifier: `./request`,
       namedImports: ['bindUrl', 'request']
     }]
 
@@ -84,7 +85,7 @@ export default class ApiTool extends BaseTool {
           if (methods[method].description) {
             docs.push(methods[method].description)
           }
-          docs.push(`${method.toUpperCase()} ${url}`)
+          docs.push(`${method.toUpperCase()} ${join(data.basePath ,url)}`)
           const parameters = this.getParameters(methods[method], imports, docs, headers)
           const isDownload = this.isDownloadApi(methods[method])
           logger('docs', docs)
@@ -94,12 +95,13 @@ export default class ApiTool extends BaseTool {
             returnType: this.getReturn(methods[method], imports),
             bodyText: writer => {
               writer.writeLine(`return request({`)
-                .writeLine(`url: bindUrl('${url}', ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
+                .writeLine(`url: bindUrl('${join(data.basePath ,url)}', ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
                 .writeLine(`method: '${method.toUpperCase()}',`)
                 .conditionalWriteLine(parameters.hasOwnProperty(BODY_PARAMS), () => `data: ${BODY_PARAMS},`)
                 .conditionalWriteLine(parameters.hasOwnProperty(QUERY_PARAMS), () => `params: ${QUERY_PARAMS},`)
                 .conditionalWriteLine(Object.keys(headers).length > 0 , () => `headers: ${JSON.stringify(headers)},`)
                 .conditionalWriteLine(isDownload, () => `responseType: 'blob',`)
+                .conditionalWriteLine(this.context.config.appendOptions, () => '...options')
                 .writeLine('})')
             },
             docs: docs.length > 0 ? [docs.join('\n')] : [],
@@ -108,7 +110,7 @@ export default class ApiTool extends BaseTool {
         }
       }
 
-      const path = `src/api/${tagName}.ts`
+      const path = join(this.context.config.outDir, `${tagName}.ts`) 
       if (fs.existsSync(path)) {
         fs.unlinkSync(path)
       }
@@ -118,7 +120,8 @@ export default class ApiTool extends BaseTool {
       })
     }
   
-    const path = `src/api/index.ts`
+    return
+    const path = join(this.context.config.outDir, `index.ts`)
     if (fs.existsSync(path)) {
       fs.unlinkSync(path)
     }
@@ -147,7 +150,7 @@ export default class ApiTool extends BaseTool {
    * @param project 
    */
   createRequestFile(project: Project){
-    const path = `src/request.ts`
+    const path = join(this.context.config.outDir, `request.ts`)
     if (fs.existsSync(path)) {
       // fs.unlinkSync(path)
       return
@@ -244,7 +247,7 @@ export default class ApiTool extends BaseTool {
         name,
         type: (writer: CodeBlockWriter) => {
           writer.write("{ ")
-          this.writeTypes(queryParameters, writer)
+          this.writeTypes(queryParameters, writer, this.context.config.optionalQuery)
           writer.write(" }")
         }
       }
@@ -287,6 +290,13 @@ export default class ApiTool extends BaseTool {
         }
       } else {
         // other
+      }
+    }
+
+    if(this.context.config.appendOptions) {
+      result['options'] = {
+        name: 'options?',
+        type: 'any',
       }
     }
     return result
@@ -344,7 +354,7 @@ export default class ApiTool extends BaseTool {
     }
   }
 
-  writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter) {
+  writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter, optional: boolean = false) {
     const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
     const hasQueryObject = (p: swaggerParameter) => p.in === "query" && p.name.includes('.') && !p.name.includes('[0].')
 
@@ -352,15 +362,29 @@ export default class ApiTool extends BaseTool {
     normalParameters.forEach((p, i) => {
       writer.write(i === 0 ? '' : ', ')
       if (Reflect.has(scalarType, p.type)) {
-        writer.write(`${p.name}: ${Reflect.get(scalarType, p.type)}`)
+        let type 
+        if(p.type === scalarType.string && Array.isArray(p.enum)) {
+          type = p.enum.map(x => `'${x}'`).join(' | ')
+        } else {
+          type = Reflect.get(scalarType, p.type)
+        }
+        writer.write(`${p.name}${!p.required || optional ? '?':''}: ${type}`)
       } else if (p.type === 'array') {
+        let name = p.name
+        if(name.endsWith('[]')) {
+          name = `'${name}'`
+        }
         if (p.items) {
           if (Reflect.has(scalarType, p.items.type)) {
-            writer.write(`${p.name}: ${Reflect.get(scalarType, p.items.type)}[]`)
+            writer.write(`${name}${!p.required || optional ? '?':''}: ${Reflect.get(scalarType, p.items.type)}[]`)
+          } else {
+            writer.write(`${name}${!p.required || optional ? '?':''}: any[]`)
           }
+        } else {
+          writer.write(`${name}${!p.required || optional ? '?':''}: any[]`)
         }
       } else {
-        writer.write(`${p.name}: any`)
+        writer.write(`${p.name}${!p.required || optional ? '?':''}: any`)
       }
     })
 
@@ -499,6 +523,6 @@ export default class ApiTool extends BaseTool {
   }
 
   getRelativePath(model: string) {
-    return `../model/${model}`
+    return `./model/${model}`
   }
 }
