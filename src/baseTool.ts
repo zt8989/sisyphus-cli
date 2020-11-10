@@ -38,7 +38,7 @@ export default class BaseTool {
   }
 
   getRelativePath(model: string) {
-    return `./${model}`
+    return `./${this.context.fileMap[model]}`
   }
 
   importGeneric(data: ModelStruct, imports: ImportDeclarationStructure[]) {

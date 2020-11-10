@@ -37,7 +37,8 @@ program
     const project = new Project()
     const context: Context = {
       config,
-      hasGeneric: false
+      hasGeneric: false,
+      fileMap: {}
     }
     await new ModelTool(context).genModels(project, data, context)
     if(!config.onlyModel) {
@@ -84,6 +85,7 @@ async function getData(file: string) {
 export interface Context {
   config: ConfigDefinition
   hasGeneric: boolean
+  fileMap: Record<string, string>
 }
 
 export interface ConfigDefinition {

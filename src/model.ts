@@ -20,15 +20,32 @@ export default class ModelTool extends BaseTool{
   async genModels(project: Project, data: swaggerJson, context: Context) {
     const definitions = data.definitions
     let genericList: string[] = []
+    const count: Record<string, number> = {}
+    const map: Record<string, string> = {}
     if (context.config.generic) {
       genericList = context.config.generic.filter(x => fs.existsSync(join(this.context.config.outDir, `model/${x}.ts`)))
       this.context.config.generic = genericList
+      genericList.forEach(x => map[x] = x)
     }
+    for (let defineName in definitions) {
+      let modelName = this.checkAndModifyModelName(defineName)
+      if (modelName !== false) {
+        if(count[modelName.toLocaleLowerCase()] === undefined) {
+          count[modelName.toLocaleLowerCase()] = 0
+          map[modelName] = modelName
+        } else {
+          count[modelName.toLocaleLowerCase()] += 1
+          map[modelName] = modelName + count[modelName.toLocaleLowerCase()]
+        }
+      }
+    }
+    this.context.fileMap = map
+
     for (let defineName in definitions) {
       const definition = definitions[defineName]
       let modelName = this.checkAndModifyModelName(defineName)
       if (modelName !== false) {
-        const path = join(this.context.config.outDir, `model/${modelName}.ts`)
+        const path = join(this.context.config.outDir, `model/${map[modelName]}.ts`)
         if (fs.existsSync(path)) {
           fs.unlinkSync(path)
         }
@@ -47,7 +64,6 @@ export default class ModelTool extends BaseTool{
         })
       }
     }
-
   }
 
   /**

@@ -536,6 +536,6 @@ export default class ApiTool extends BaseTool {
   }
 
   getRelativePath(model: string) {
-    return `./model/${model}`
+    return `./model/${this.context.fileMap[model]}`
   }
 }
