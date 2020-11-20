@@ -1,5 +1,5 @@
 import { swaggerDefinition, swaggerJson } from './request';
-import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
+import { PropertyDeclarationStructure, ImportDeclarationStructure, CodeBlockWriter } from 'ts-simple-ast';
 import fs from 'fs'
 import { ModelStruct } from './utils/modelNameParser'
 import BaseTool from './baseTool'
@@ -16,7 +16,8 @@ const scalarType = {
 
 export default class ModelTool extends BaseTool{
  
-  async genModels(project: Project, data: swaggerJson) {
+  async genModels(data: swaggerJson) {
+    const project = this.project
     const definitions = data.definitions
     const count: Record<string, number> = {}
     const map: Record<string, string> = {}
@@ -77,28 +78,35 @@ export default class ModelTool extends BaseTool{
             }
           } else {
             if(!this.context.generic.some(x => x === (struct as ModelStruct).name)) {
-              const modelName = struct.name
-              const path = join(this.context.outDir, `model/${map[modelName]}.ts`)
-              if (fs.existsSync(path)) {
-                fs.unlinkSync(path)
-              }
-              const imports: ImportDeclarationStructure[] = []
-              const properties = this.getProperties(definition, imports, modelName)
-              project.createSourceFile(path, {
-                imports: imports,
-                interfaces: [
-                  {
-                    name: modelName,
-                    properties: properties,
-                    isDefaultExport: true,
-                    docs: definition.description ? [definition.description] : []
-                  }
-                ]
-              })
+              this.genFile(struct.name, definition);
           }
         }
       }
     }
+  }
+
+  genFile(modelName: string, definition: swaggerDefinition) {
+    const map = this.context.fileMap
+    if(!this.context.fileMap[modelName]){
+      this.context.fileMap[modelName] = modelName
+    }
+    const path = join(this.context.outDir, `model/${map[modelName]}.ts`);
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path);
+    }
+    const imports: ImportDeclarationStructure[] = [];
+    const properties = this.getProperties(definition, imports, modelName);
+    this.project.createSourceFile(path, {
+      imports: imports,
+      interfaces: [
+        {
+          name: modelName,
+          properties: properties,
+          isDefaultExport: true,
+          docs: definition.description ? [definition.description] : []
+        }
+      ]
+    });
   }
 
   getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[], modelName: string, generic = false) {
@@ -167,13 +175,50 @@ export default class ModelTool extends BaseTool{
                   docs: prop.description ? [prop.description] : []
                 })
               }
+            } else if(prop.items.type === 'object') {
+              if(prop.items.properties){
+                const params = Object.keys(prop.items.properties).map(x => {
+                  return {
+                    // @ts-ignore
+                    ...prop.items.properties[x],
+                    name: x
+                  }
+                })
+                properties.push({
+                  name: propName,
+                  type: (writer: CodeBlockWriter) => {
+                    writer.write("{ ")
+                    this.writeTypes(params, writer)
+                    writer.write(" }[]")
+                  }
+                })
+              }
             }
           } else if (prop.type === 'object') {
-            properties.push({
-              name: propName,
-              type: 'object',
-              docs: prop.description ? [prop.description] : []
-            })
+            if(prop.properties){
+              // @ts-ignore
+              const params = Object.keys(prop.properties).map(x => {
+                return {
+                  // @ts-ignore
+                  ...prop.properties[x],
+                  name: x
+                }
+              })
+              properties.push({
+                name: propName,
+                type: (writer: CodeBlockWriter) => {
+                  writer.write("{ ")
+                  this.writeTypes(params, writer)
+                  writer.write(" }")
+                }
+              })
+            } else {
+              properties.push({
+                name: propName,
+                type: 'object',
+                docs: prop.description ? [prop.description] : []
+              })
+            }
           }
         }
       }

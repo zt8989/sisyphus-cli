@@ -152,3 +152,7 @@ Q: 我遇到了中文的model怎么办？
   
   sisyphus.json => sisyphus.js
   移除`generic`选项，工具会判断，自动生成
+
+* 0.23
+  
+  超过三个类型的query自动生成query类型

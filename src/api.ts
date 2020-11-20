@@ -6,6 +6,7 @@ import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
 import { join, ParsedPath, parse, posix } from 'path';
 import * as changeCase from "change-case";
+import ModelTool from './model';
 const logger = require('debug')('api')
 
 const retainWord = ['delete']
@@ -55,7 +56,8 @@ export default class ApiTool extends BaseTool {
     return tag
   }
 
-  async genApis(project: Project, data: swaggerJson) {
+  async genApis(data: swaggerJson) {
+    const project = this.project
     // this.createRequestFile(project)
     if(this.context.config.createTags) {
       this.createTags(data)
@@ -95,17 +97,19 @@ export default class ApiTool extends BaseTool {
             docs.push(methods[method].description)
           }
           docs.push(`${method.toUpperCase()} ${posix.join(data.basePath ,url)}`)
-          const parameters = this.getParameters(methods[method], imports, docs, headers)
+       
+          const methodName = this.handleOperationId({
+            swaggerRequest: methods[method],
+            tagName,
+            url,
+            method,
+            parsedPath: parse(url)
+          });
+          const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
           const isDownload = this.isDownloadApi(methods[method])
           logger('docs', docs)
           functions.push({
-            name: this.handleOperationId({
-              swaggerRequest: methods[method], 
-              tagName, 
-              url, 
-              method,
-              parsedPath: parse(url)
-            }),
+            name: methodName,
             parameters: this.handleFunctionParameters(parameters),
             returnType: this.getReturn(methods[method], imports),
             bodyText: writer => {
@@ -234,7 +238,7 @@ export default class ApiTool extends BaseTool {
     })
   }
 
-  getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string}) {
+  getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string }, methodName: string) {
     const result: { [key: string]: ParameterDeclarationStructure } = {}
     const parameters = path.parameters || []
 
@@ -256,14 +260,75 @@ export default class ApiTool extends BaseTool {
     const queryParameters = parameters.filter(x => x.in === 'query')
     if (queryParameters.length > 0) {
       const name = 'queryParams'
-      docs.push(`@param {Object} ${name}`)
-      this.getParameterDocs(name, queryParameters, docs)
-      result[name] = {
-        name,
-        type: (writer: CodeBlockWriter) => {
-          writer.write("{ ")
-          this.writeTypes(queryParameters, writer, this.context.config.optionalQuery)
-          writer.write(" }")
+
+      if(queryParameters.length > 3) {
+        const fileName = methodName + "Query"
+        const typeName = fileName[0].toUpperCase() + fileName.slice(1)
+        const define: swaggerDefinition = {
+          type: 'object',
+          required: true,
+          properties: {},
+          title: typeName,
+          description: typeName
+        }
+        docs.push(`@param {${typeName}} ${name}`)
+        queryParameters.forEach(x => {
+          if(x.name.indexOf("[0].") !== -1) {
+            const splitNames = x.name.split("[0].")
+            const name = splitNames[0]
+            const childName = splitNames[1]
+            if(define.properties[name]) {
+              // @ts-ignore
+              define.properties[name]["items"]["properties"][childName] = x
+            } else {
+              define.properties[name] = {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    [childName]: x
+                  }
+                }
+              } as any
+            } 
+          } else if(x.name.indexOf(".") !== -1){
+            const splitNames = x.name.split(".")
+            const name = splitNames[0]
+            const childName = splitNames[1]
+            if(define.properties[name]) {
+              // @ts-ignore
+              define.properties[name]["properties"][childName] = define
+            } else {
+              define.properties[name] = {
+                type: "object",
+                properties: {
+                  [childName]: define
+                }
+              } as any
+            } 
+          } else {
+            define.properties[x.name] = x as any
+          }
+        })
+        new ModelTool(this.context, this.project).genFile(typeName, define)
+        result[name] = {
+          name: name,
+          type: typeName
+        }
+        imports.push({
+          moduleSpecifier: this.getRelativePath(typeName),
+          defaultImport: typeName
+        })
+      } else {
+        docs.push(`@param {Object} ${name}`)
+        this.getParameterDocs(name, queryParameters, docs)
+        result[name] = {
+          name,
+          type: (writer: CodeBlockWriter) => {
+            writer.write("{ ")
+            this.writeTypes(queryParameters, writer, this.context.config.optionalQuery)
+            writer.write(" }")
+          }
         }
       }
     }
@@ -366,80 +431,6 @@ export default class ApiTool extends BaseTool {
     logger(list)
     for (let i in list) {
       this.getParameterDocs(name, list[i], docs, true)
-    }
-  }
-
-  writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter, optional: boolean = false) {
-    const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
-    const hasQueryObject = (p: swaggerParameter) => p.in === "query" && p.name.includes('.') && !p.name.includes('[0].')
-
-    const normalParameters = parameters.filter(p => !hasQueryArray(p) && !hasQueryObject(p))
-    normalParameters.forEach((p, i) => {
-      writer.write(i === 0 ? '' : ', ')
-      if (Reflect.has(scalarType, p.type)) {
-        let type 
-        if(p.type === scalarType.string && Array.isArray(p.enum)) {
-          type = p.enum.map(x => `'${x}'`).join(' | ')
-        } else {
-          type = Reflect.get(scalarType, p.type)
-        }
-        writer.write(`${p.name}${!p.required || optional ? '?':''}: ${type}`)
-      } else if (p.type === 'array') {
-        let name = p.name
-        if(name.endsWith('[]')) {
-          name = `'${name}'`
-        }
-        if (p.items) {
-          if (Reflect.has(scalarType, p.items.type)) {
-            writer.write(`${name}${!p.required || optional ? '?':''}: ${Reflect.get(scalarType, p.items.type)}[]`)
-          } else {
-            writer.write(`${name}${!p.required || optional ? '?':''}: any[]`)
-          }
-        } else {
-          writer.write(`${name}${!p.required || optional ? '?':''}: any[]`)
-        }
-      } else {
-        writer.write(`${p.name}${!p.required || optional ? '?':''}: any`)
-      }
-    })
-
-    {
-      const list: { [key: string]: swaggerParameter[] } = {}
-      const seprator = '[0].'
-      const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
-      queryArray.forEach(q => {
-        const [name, filed] = q.name.split(seprator)
-        if (!list[name]) {
-          list[name] = []
-        }
-        list[name].push({ ...q, name: filed })
-      })
-      logger(list)
-      for (let i in list) {
-        writer.write(normalParameters.length === 0 ? '' : ', ')
-        writer.write(`${i}: {`)
-        this.writeTypes(list[i], writer)
-        writer.write(` }[]`)
-      }
-    }
-    {
-      const list: { [key: string]: swaggerParameter[] } = {}
-      const seprator = '.'
-      const queryObject: swaggerParameter[] = parameters.filter(hasQueryObject)
-      queryObject.forEach(q => {
-        const [name, filed] = q.name.split(seprator)
-        if (!list[name]) {
-          list[name] = []
-        }
-        list[name].push({ ...q, name: filed })
-      })
-      logger(list)
-      for (let i in list) {
-        writer.write(normalParameters.length === 0 ? '' : ', ')
-        writer.write(`${i}: {`)
-        this.writeTypes(list[i], writer)
-        writer.write(` }`)
-      }
     }
   }
 

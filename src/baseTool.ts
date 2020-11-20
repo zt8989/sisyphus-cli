@@ -1,14 +1,93 @@
 import { Context } from "./index";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
-import { ImportDeclarationStructure } from "ts-simple-ast";
+import Project, { CodeBlockWriter, ImportDeclarationStructure } from "ts-simple-ast";
+import { swaggerParameter } from "./request";
+import { scalarType } from "./utils/enum";
+const logger = require('debug')('api')
 
 const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
 
 export default class BaseTool {
   protected context: Context
+  protected project: Project
 
-  constructor(context: Context) {
+  constructor(context: Context, project: Project) {
     this.context = context
+    this.project = project
+  }
+
+  writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter, optional: boolean = false) {
+    const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
+    const hasQueryObject = (p: swaggerParameter) => p.in === "query" && p.name.includes('.') && !p.name.includes('[0].')
+
+    const normalParameters = parameters.filter(p => !hasQueryArray(p) && !hasQueryObject(p))
+    normalParameters.forEach((p, i) => {
+      writer.write(i === 0 ? '' : ', ')
+      if (Reflect.has(scalarType, p.type)) {
+        let type 
+        if(p.type === scalarType.string && Array.isArray(p.enum)) {
+          type = p.enum.map(x => `'${x}'`).join(' | ')
+        } else {
+          type = Reflect.get(scalarType, p.type)
+        }
+        writer.write(`${p.name}${!p.required || optional ? '?':''}: ${type}`)
+      } else if (p.type === 'array') {
+        let name = p.name
+        if(name.endsWith('[]')) {
+          name = `'${name}'`
+        }
+        if (p.items) {
+          if (Reflect.has(scalarType, p.items.type)) {
+            writer.write(`${name}${!p.required || optional ? '?':''}: ${Reflect.get(scalarType, p.items.type)}[]`)
+          } else {
+            writer.write(`${name}${!p.required || optional ? '?':''}: any[]`)
+          }
+        } else {
+          writer.write(`${name}${!p.required || optional ? '?':''}: any[]`)
+        }
+      } else {
+        writer.write(`${p.name}${!p.required || optional ? '?':''}: any`)
+      }
+    })
+
+    {
+      const list: { [key: string]: swaggerParameter[] } = {}
+      const seprator = '[0].'
+      const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
+      queryArray.forEach(q => {
+        const [name, filed] = q.name.split(seprator)
+        if (!list[name]) {
+          list[name] = []
+        }
+        list[name].push({ ...q, name: filed })
+      })
+      logger(list)
+      for (let i in list) {
+        writer.write(normalParameters.length === 0 ? '' : ', ')
+        writer.write(`${i}: {`)
+        this.writeTypes(list[i], writer)
+        writer.write(` }[]`)
+      }
+    }
+    {
+      const list: { [key: string]: swaggerParameter[] } = {}
+      const seprator = '.'
+      const queryObject: swaggerParameter[] = parameters.filter(hasQueryObject)
+      queryObject.forEach(q => {
+        const [name, filed] = q.name.split(seprator)
+        if (!list[name]) {
+          list[name] = []
+        }
+        list[name].push({ ...q, name: filed })
+      })
+      logger(list)
+      for (let i in list) {
+        writer.write(normalParameters.length === 0 ? '' : ', ')
+        writer.write(`${i}: {`)
+        this.writeTypes(list[i], writer)
+        writer.write(` }`)
+      }
+    }
   }
 
    /**

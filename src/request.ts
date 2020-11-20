@@ -55,27 +55,20 @@ export interface swaggerDefinitions {
     [key: string]: swaggerDefinition
 }
 
-export interface swaggerDefinition {
-    type: string
-    required: string[]
-    properties: {
-      [key: string]: {
-        type?: string
-        enum?: string[] 
-        description: string
-        $ref?: string
-        items: swaggerProperty
-      }
-    }
-    title: string
-    description: string
-}
-
 export interface swaggerProperty {
   type?: string
   description: string
   $ref?: string
   items: swaggerProperty
+  enum?: string[] 
+  properties?: swaggerProperty
+}
+export interface swaggerDefinition {
+    type: string
+    required: boolean
+    properties: Record<string, swaggerProperty>
+    title: string
+    description: string
 }
 
 export default async function getSwaggerJson(url: string){

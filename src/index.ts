@@ -38,9 +38,9 @@ program
       outDir: key === 'default' ? config.outDir : join(config.outDir, key),
       generic: []
     }
-    await new ModelTool(context).genModels(project, data)
+    await new ModelTool(context, project).genModels(data)
     if(!config.onlyModel) {
-      await new ApiTool(context).genApis(project, data)
+      await new ApiTool(context, project).genApis(data)
     }
     // await genIndex(project)
     await project.save()
