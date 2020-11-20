@@ -44,53 +44,102 @@
 ```javascript
 module.exports = {
   "file": "http://localhost:8000/v2/api-docs",
-  "generic": ["PageOutput", "ResultMessage"],
   "tags": {
     "信息相关": "message",
   },
-  nameStrategy(sr, tag, url){
-    return sr.operationId
+  outDir: "./src/service",
+  nameStrategy(interfaceInfo, changeCase) {
+    const subs = interfaceInfo.parsedPath.dir.split('/');
+    const dirSub = subs.slice(subs.length - 2);
+    dirSub.push(interfaceInfo.parsedPath.name);
+    dirSub.push(interfaceInfo.method.toLocaleLowerCase());
+    return changeCase.camelCase(dirSub.join('_'));
   },
   unpackResponse: true,
   optionalQuery: false,
   appendOptions: true,
-  onlyModel: true
+  onlyModel: false,
+  createTags: false,
+  requestPath: "@/service/request.ts"
 }
 ```
 
-`file` 必填，表示swagger地址，可以是url或者file
+## 参数说明
 
-`generic` 可选，表示泛型类，需要手动编写放在model文件。不填写generic，会将`Page<Data>` => `PageData`类型
+### file
 
-`tags` 可选，表示tag映射，如果tag是中文的最好映射一下
+必填，表示swagger地址，可以是url或者file
+如果是对象比如
+```json
+{
+  "a": "http://localhost:8000/v2/api-docs",
+  "b": "http://localhost:8000/v2/api-docs",
+}
+```
+会在各自模块下生成对应的请求文件和模型
+outDir + "a" 下面生成请求文件和模型
+outDir + "b" 下面生成请求文件和模型
 
-`nameStrategy` 可选，命名策略， `sr`类型下处展示，`tag`表示标签分类, `url`表示请求路径
+### tags
 
-`unpackResponse` 可选，响应结果解包，比如 `Promise<Result<BaseVo>>` => `Promise<BaseVo>`
+可选，表示tag映射，如果tag是中文的最好映射一下
 
-`optionalQuery` 可选，将所有query属性转为option
-`appendOptions`: 可选，增加额外的options, `function abc() { return request({}) }` => `function abc(options?: any) { return request({ ...options }) }`
+### nameStrategy
 
-`onlyModel` 可选，只生成model
+可选，命名策略， `interfaceInfo`接口信息，`changeCase`表示[`change-case`](https://www.npmjs.com/package/change-case)实例
 
+### unpackResponse
+
+可选， 默认false，响应结果解包，比如 `Promise<Result<BaseVo>>` => `Promise<BaseVo>`
+
+### optionalQuery
+
+可选，默认false，将所有query属性转为option
+
+### appendOptions
+
+可选，增加额外的options, `function abc() { return request({}) }` => `function abc(options?: any) { return request({ ...options }) }`
+
+### onlyModel
+
+可选，只生成model, 默认false
+
+### outDir
+
+可选，自动生成位置， 默认`./src/api`
+
+### requestPath
+
+可选，请求路径位置， 默认如果file是string 返回`./request`,否则`../request`
+现在不会生成`request.ts`文件可参考自己写一份
 ```typescript
-export interface swaggerRequest {
-    tags: string[]
-    summary: string
-    description: string
-    operationId: string
-    parameters: swaggerParameter[]
-    responses: {
-      "200": {
-        schema: {
-          $ref: string
-          type: string
-        }
-      }
+import axios from 'axios'
+
+function bindUrl(path: string, pathParams: any) {
+  if (!path.match(/^\//)) {
+    path = '/' + path;
+  }
+  var url = path;
+  url = url.replace(/\{([\w-]+)\}/g, function (fullMatch, key) {
+    var value;
+    if (pathParams.hasOwnProperty(key)) {
+      value = pathParams[key];
+    } else {
+      value = fullMatch;
     }
+    return encodeURIComponent(value);
+  });
+  return url;
 }
+
+const request = axios
+
+export { request, bindUrl };
 ```
 
+### createTags
+
+可选，默认false， 生成tags文件方便映射
 # QA
 
 Q: 我遇到了中文的model怎么办？
@@ -104,7 +153,6 @@ Q: 我遇到了中文的model怎么办？
 * [x] 自动打包发布到npm，包含可以提示的d.ts
 * [ ] 自动生成浏览器可以用的js
 * [x] 考虑泛型的优化
-* [] 当query参数小于三个则解构参数
 
 # 更新日志
 
@@ -112,3 +160,7 @@ Q: 我遇到了中文的model怎么办？
 * 0.16 修复解析数组的报错的bug
 * 0.17 增加命名策略
 * 0.18 增加命名策略
+* 0.22 
+  
+  sisyphus.json => sisyphus.js
+  移除`generic`选项，工具会判断，自动生成

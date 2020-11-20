@@ -26,21 +26,19 @@ program
   const config = getConfig()
   if (config === false) return
 
-  if(!config.outDir) {
-    config.outDir = './src/api'
-  }
-
-  const files = Array.isArray(config.file) ? config.file : [config.file]
-  for(let file of files){
+  const files = typeof config.file === 'string' ? { default: config.file } : config.file
+  for(let key in files){
+    let file = files[key]
     const data = await getData(file)
     if (data === false) return
     const project = new Project()
     const context: Context = {
       config,
-      hasGeneric: false,
-      fileMap: {}
+      fileMap: {},
+      outDir: key === 'default' ? config.outDir : join(config.outDir, key),
+      generic: []
     }
-    await new ModelTool(context).genModels(project, data, context)
+    await new ModelTool(context).genModels(project, data)
     if(!config.onlyModel) {
       await new ApiTool(context).genApis(project, data)
     }
@@ -84,14 +82,14 @@ async function getData(file: string) {
 
 export interface Context {
   config: ConfigDefinition
-  hasGeneric: boolean
   fileMap: Record<string, string>
+  outDir: string
+  generic: string[]
 }
 
 export interface ConfigDefinition {
-  file: string | string[],
+  file: string | { [key: string]: string },
   outDir: string,
-  generic?: string[],
   tags?: {
     [key: string]: string
   },
@@ -100,6 +98,8 @@ export interface ConfigDefinition {
   optionalQuery?: boolean,
   appendOptions?: boolean
   onlyModel?: boolean
+  createTags?: boolean
+  requestPath?: string
 }
 
 async function initProject(){
@@ -130,7 +130,23 @@ function getConfig() {
     configJson = require(configFile2) as ConfigDefinition
   }
 
-  const files = Array.isArray(configJson.file) ? configJson.file : [configJson.file]
+  if(configJson.unpackResponse === undefined){
+    configJson.unpackResponse = false
+  }
+
+  if(configJson.optionalQuery === undefined){
+    configJson.optionalQuery = false
+  }
+
+  if(!configJson.outDir) {
+    configJson.outDir = './src/api'
+  }
+
+  const files = typeof configJson.file === 'string' ? [configJson.file] : getValues(configJson.file)
+
+  if(!configJson.requestPath) {
+    configJson.requestPath = typeof configJson.file === 'string' ? "./request" : "../request"
+  }
    
   for(let file of files){
     if (!file) {
@@ -139,11 +155,15 @@ function getConfig() {
     }
   
   
-    if (!file.startsWith('http') && !fs.existsSync(file)) {
+    if (!file.startsWith('http')) {
       console.error('请确认json文件是否存在!')
       return false
     }
   }
 
   return configJson
+}
+
+function getValues(map: Record<string, string>) {
+  return Object.keys(map).map(x => map[x])
 }

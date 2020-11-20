@@ -11,26 +11,27 @@ export default class BaseTool {
     this.context = context
   }
 
-  /**
- * 检查并移除泛型箭头
- * @param name 
- */
-  checkAndModifyModelName(name: string) {
-    const parser = new ModelNameParser(name, this.context.config.generic || [])
+   /**
+   * 检查并移除泛型箭头
+   * @param name 
+   */
+  checkAndModifyModelName(name: string): false | ModelStruct {
+    const parser = new ModelNameParser(name, this.context.generic || [])
     parser.parse()
     const struct = parser.getData()
-    if (struct && this.context.config.generic && this.context.config.generic.some(g => g === struct.name)) {
+    const generic = ["List", "Map"]
+    if (generic.some(g => g === struct.name)) {
       return false
-    } else {
-      return parser.asString()
     }
+    return struct
   }
 
   getModelType(name: string): [boolean, ModelNameParser] {
-    const parser = new ModelNameParser(name, this.context.config.generic || [])
+    const parser = new ModelNameParser(name, this.context.generic || [])
     parser.parse()
     const struct = parser.getData()
-    if (struct && this.context.config.generic && this.context.config.generic.some(g => g === struct.name)) {
+    // console.log(this.context.generic)
+    if (struct && this.context.generic.some(g => g === struct.name)) {
       return [true, parser]
     } else {
       return [false, parser]

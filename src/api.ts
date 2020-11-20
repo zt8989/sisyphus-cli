@@ -4,7 +4,7 @@ import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
-import { join, ParsedPath, parse } from 'path';
+import { join, ParsedPath, parse, posix } from 'path';
 import * as changeCase from "change-case";
 const logger = require('debug')('api')
 
@@ -42,7 +42,7 @@ export default class ApiTool extends BaseTool {
    * 预先加载泛型类
    */
   importGenerics(imports: ImportDeclarationStructure[]) {
-    (this.context.config.generic || []).forEach(g => {
+    (this.context.generic || []).forEach(g => {
       this._checkAndAddImport(g, imports)
     })
   }
@@ -56,11 +56,13 @@ export default class ApiTool extends BaseTool {
   }
 
   async genApis(project: Project, data: swaggerJson) {
-    this.createRequestFile(project)
-    this.createTags(data)
+    // this.createRequestFile(project)
+    if(this.context.config.createTags) {
+      this.createTags(data)
+    }
 
     const defaultImports :ImportDeclarationStructure[] = [{
-      moduleSpecifier: `./request`,
+      moduleSpecifier: this.context.config.requestPath || "",
       namedImports: ['bindUrl', 'request']
     }]
 
@@ -72,7 +74,7 @@ export default class ApiTool extends BaseTool {
       const functions: FunctionDeclarationStructure[] = []
       const imports: ImportDeclarationStructure[] = [...defaultImports]
 
-      this.importGenerics(imports)
+      // this.importGenerics(imports)
       indexImports.push({
         moduleSpecifier: `./${tagName}`,
         defaultImport: `* as ${tagName}`
@@ -92,7 +94,7 @@ export default class ApiTool extends BaseTool {
           if (methods[method].description) {
             docs.push(methods[method].description)
           }
-          docs.push(`${method.toUpperCase()} ${join(data.basePath ,url)}`)
+          docs.push(`${method.toUpperCase()} ${posix.join(data.basePath ,url)}`)
           const parameters = this.getParameters(methods[method], imports, docs, headers)
           const isDownload = this.isDownloadApi(methods[method])
           logger('docs', docs)
@@ -108,7 +110,7 @@ export default class ApiTool extends BaseTool {
             returnType: this.getReturn(methods[method], imports),
             bodyText: writer => {
               writer.writeLine(`return request({`)
-                .writeLine(`url: bindUrl('${join(data.basePath ,url)}', ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
+                .writeLine(`url: bindUrl('${posix.join(data.basePath ,url)}', ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
                 .writeLine(`method: '${method.toUpperCase()}',`)
                 .conditionalWriteLine(parameters.hasOwnProperty(BODY_PARAMS), () => `data: ${BODY_PARAMS},`)
                 .conditionalWriteLine(parameters.hasOwnProperty(QUERY_PARAMS), () => `params: ${QUERY_PARAMS},`)
@@ -123,7 +125,7 @@ export default class ApiTool extends BaseTool {
         }
       }
 
-      const path = join(this.context.config.outDir, `${tagName}.ts`) 
+      const path = join(this.context.outDir, `${tagName}.ts`) 
       if (fs.existsSync(path)) {
         fs.unlinkSync(path)
       }
@@ -134,7 +136,7 @@ export default class ApiTool extends BaseTool {
     }
   
     return
-    const path = join(this.context.config.outDir, `index.ts`)
+    const path = join(this.context.outDir, `index.ts`)
     if (fs.existsSync(path)) {
       fs.unlinkSync(path)
     }
@@ -163,7 +165,7 @@ export default class ApiTool extends BaseTool {
    * @param project 
    */
   createRequestFile(project: Project){
-    const path = join(this.context.config.outDir, `request.ts`)
+    const path = join(this.context.outDir, `request.ts`)
     if (fs.existsSync(path)) {
       // fs.unlinkSync(path)
       return

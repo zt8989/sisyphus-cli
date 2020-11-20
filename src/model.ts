@@ -1,8 +1,7 @@
-import { Context } from './index';
 import { swaggerDefinition, swaggerJson } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
-import ModelNameParser from './utils/modelNameParser'
+import { ModelStruct } from './utils/modelNameParser'
 import BaseTool from './baseTool'
 import { join } from 'path';
 
@@ -17,82 +16,111 @@ const scalarType = {
 
 export default class ModelTool extends BaseTool{
  
-  async genModels(project: Project, data: swaggerJson, context: Context) {
+  async genModels(project: Project, data: swaggerJson) {
     const definitions = data.definitions
-    let genericList: string[] = []
     const count: Record<string, number> = {}
     const map: Record<string, string> = {}
-    if (context.config.generic) {
-      genericList = context.config.generic.filter(x => fs.existsSync(join(this.context.config.outDir, `model/${x}.ts`)))
-      this.context.config.generic = genericList
-      genericList.forEach(x => map[x] = x)
-    }
+
+    // 统计是否重复 
     for (let defineName in definitions) {
-      let modelName = this.checkAndModifyModelName(defineName)
-      if (modelName !== false) {
-        if(count[modelName.toLocaleLowerCase()] === undefined) {
-          count[modelName.toLocaleLowerCase()] = 0
-          map[modelName] = modelName
+      let struct = this.checkAndModifyModelName(defineName)
+      if (struct !== false) {
+        const modelName = struct.name
+        if(struct.children.length > 0){
+          if(!this.context.generic.some(x => x === modelName)){
+            count[modelName.toLocaleLowerCase()] = 0
+            map[modelName] = modelName
+            this.context.generic.push(modelName)
+          }
         } else {
-          count[modelName.toLocaleLowerCase()] += 1
-          map[modelName] = modelName + count[modelName.toLocaleLowerCase()]
+          if(count[modelName.toLocaleLowerCase()] === undefined) {
+            count[modelName.toLocaleLowerCase()] = 0
+            map[modelName] = modelName
+          } else {
+            count[modelName.toLocaleLowerCase()] += 1
+            map[modelName] = modelName + count[modelName.toLocaleLowerCase()]
+          }
         }
       }
     }
     this.context.fileMap = map
 
-    for (let defineName in definitions) {
-      const definition = definitions[defineName]
-      let modelName = this.checkAndModifyModelName(defineName)
-      if (modelName !== false) {
-        const path = join(this.context.config.outDir, `model/${map[modelName]}.ts`)
-        if (fs.existsSync(path)) {
-          fs.unlinkSync(path)
-        }
-        const imports: ImportDeclarationStructure[] = []
-        const properties = this.getProperties(definition, imports, modelName)
-        project.createSourceFile(path, {
-          imports: imports,
-          interfaces: [
-            {
-              name: modelName,
-              properties: properties,
-              isDefaultExport: true,
-              docs: definition.description ? [definition.description] : []
+    // 记录已经创建的泛型类
+    const generic: string[] = []
+
+      for (let defineName in definitions) {
+        const definition = definitions[defineName]
+        let struct = this.checkAndModifyModelName(defineName)
+        if (struct !== false) {
+          const modelName = struct.name
+
+          if(struct.children.length > 0 ) {
+            if(this.context.generic.some(x => x === modelName) && !generic.some(x => x === modelName)) {
+              generic.push(modelName)
+              const path = join(this.context.outDir, `model/${map[modelName]}.ts`)
+              if (fs.existsSync(path)) {
+                fs.unlinkSync(path)
+              }
+              const imports: ImportDeclarationStructure[] = []
+              const properties = this.getProperties(definition, imports, modelName, true)
+              project.createSourceFile(path, {
+                imports: imports,
+                interfaces: [
+                  {
+                    name: `${modelName}<T>`,
+                    properties: properties,
+                    isDefaultExport: true,
+                    docs: definition.description ? [definition.description] : []
+                  }
+                ]
+              })
             }
-          ]
-        })
+          } else {
+            if(!this.context.generic.some(x => x === (struct as ModelStruct).name)) {
+              const modelName = struct.name
+              const path = join(this.context.outDir, `model/${map[modelName]}.ts`)
+              if (fs.existsSync(path)) {
+                fs.unlinkSync(path)
+              }
+              const imports: ImportDeclarationStructure[] = []
+              const properties = this.getProperties(definition, imports, modelName)
+              project.createSourceFile(path, {
+                imports: imports,
+                interfaces: [
+                  {
+                    name: modelName,
+                    properties: properties,
+                    isDefaultExport: true,
+                    docs: definition.description ? [definition.description] : []
+                  }
+                ]
+              })
+          }
+        }
       }
     }
   }
 
-  /**
-   * 检查并移除泛型箭头
-   * @param name 
-   */
-  checkAndModifyModelName(name: string) {
-    const parser = new ModelNameParser(name, this.context.config.generic || [])
-    parser.parse()
-    const struct = parser.getData()
-    if (struct && this.context.config.generic && this.context.config.generic.some(g => g === struct.name)) {
-      return false
-    } else {
-      return parser.asString()
-    }
-  }
-
-  getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[], modelName: string) {
+  getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[], modelName: string, generic = false) {
     const properties: PropertyDeclarationStructure[] = []
     if (definition.type === "object") {
       for (let propName in definition.properties) {
         const prop = definition.properties[propName]
         if (prop.$ref) {
-          const type = this.checkAndReturnType(prop.$ref, imports, [modelName])
-          properties.push({
-            name: propName,
-            type,
-            docs: prop.description ? [prop.description] : []
-          })
+          if(!generic) {
+            const type = this.checkAndReturnType(prop.$ref, imports, [modelName])
+            properties.push({
+              name: propName,
+              type,
+              docs: prop.description ? [prop.description] : []
+            })
+          } else {
+            properties.push({
+              name: propName,
+              type: 'T',
+              docs: prop.description ? [prop.description] : []
+            })
+          }
         }
 
         if (prop.type) {
@@ -110,12 +138,20 @@ export default class ModelTool extends BaseTool{
             })
           } else if (prop.type === 'array') {
             if (prop.items.$ref) {
-              const type = this.checkAndReturnType(prop.items.$ref, imports, [modelName])
-              properties.push({
-                name: propName,
-                type: `${type}[]`,
-                docs: prop.description ? [prop.description] : []
-              })
+              if(generic) {
+                properties.push({
+                  name: propName,
+                  type: `T[]`,
+                  docs: prop.description ? [prop.description] : []
+                })
+              } else {
+                const type = this.checkAndReturnType(prop.items.$ref, imports, [modelName])
+                properties.push({
+                  name: propName,
+                  type: `${type}[]`,
+                  docs: prop.description ? [prop.description] : []
+                })
+              }
             } else if (prop.items.type && Reflect.has(scalarType, prop.items.type)) {
               properties.push({
                 name: propName,
