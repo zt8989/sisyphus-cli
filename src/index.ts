@@ -155,8 +155,8 @@ function getConfig() {
     }
   
   
-    if (!file.startsWith('http')) {
-      console.error('请确认json文件是否存在!')
+    if (!file.startsWith('http') && !fs.existsSync(path.resolve(process.cwd(), file))) {
+      console.error('请确认json文件是否存在!', fs.existsSync(path.resolve(process.cwd(), file)))
       return false
     }
   }
