@@ -1,4 +1,4 @@
-export const scalarType = {
+export const scalarType: Record<string, string> = {
   'string': 'string',
   'boolean': 'boolean',
   'integer': 'number',
@@ -6,7 +6,7 @@ export const scalarType = {
   'number': 'number',
   'long': 'number',
   'Void': 'null',
-  'object': 'any',
+  // 'object': 'any',
 }
 
 export const scalarTypeS = {

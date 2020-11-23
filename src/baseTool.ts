@@ -1,7 +1,7 @@
 import { Context } from "./index";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
-import Project, { CodeBlockWriter, ImportDeclarationStructure } from "ts-simple-ast";
-import { swaggerParameter } from "./request";
+import Project, { CodeBlockWriter, ImportDeclarationStructure, PropertyDeclarationStructure } from "ts-simple-ast";
+import { swaggerParameter, swaggerProperty } from "./request";
 import { scalarType } from "./utils/enum";
 const logger = require('debug')('api')
 
@@ -164,6 +164,76 @@ export default class BaseTool {
       }
       return importName
     }
+  }
+
+  handleObjectProp = (prop: swaggerProperty) => {
+    if(prop.type === 'object') {
+
+    }
+  }
+
+  handleArryaProp = (prop: swaggerProperty) => {
+    if(prop.type === 'array') {
+      this.handleProps(prop.items)
+    }
+  }
+
+  handleProps = (prop: swaggerProperty) => {
+    const list = [this.handleArryaProp, this.handleObjectProp]
+    list.forEach(handler => handler(prop))
+  }
+
+  handleProp(prop: swaggerProperty, generic: boolean, imports: ImportDeclarationStructure[], modelName: string, typeMapper: (writer: CodeBlockWriter, callback: () => void) => void): PropertyDeclarationStructure["type"] | null {
+    if (prop.$ref) {
+      if (!generic) {
+        const type = this.checkAndReturnType(prop.$ref, imports, modelName ? [modelName]: []);
+        return (writer: CodeBlockWriter) => typeMapper(writer, () => writer.write(type))
+      } else {
+        return (writer: CodeBlockWriter) => typeMapper(writer, () => writer.write('T'))
+      }
+    }
+
+    if (prop.type) {
+      if (Reflect.has(scalarType, prop.type)) {
+        let type: string;
+        if (prop.type === scalarType.string && Array.isArray(prop.enum)) {
+          type = prop.enum.map(x => `'${x}'`).join(' | ');
+        } else {
+          type = Reflect.get(scalarType, prop.type);
+        }
+        return (writer: CodeBlockWriter) => typeMapper(writer, () => writer.write(type))
+      } else if (prop.type === 'array') {
+        return this.handleProp(prop.items, generic, imports, modelName, (writer, callback) => {
+          callback()
+          writer.write("[]")
+        })
+      } else if (prop.type === 'object') {
+        if (prop.properties) {
+          // @ts-ignore
+          const params = Object.keys(prop.properties).map(x => {
+            return {
+              // @ts-ignore
+              ...prop.properties[x],
+              name: x
+            };
+          });
+          return (writer: CodeBlockWriter) => typeMapper(writer, () => {
+              writer.write("{ ");
+              this.writeTypes(params, writer);
+              writer.write(" }");
+            })
+        } else if(prop.additionalProperties) {
+          return this.handleProp(prop.additionalProperties, generic, imports, modelName, (writer, callback) => {
+            writer.write("Record<string, ")
+            callback()
+            writer.write(">")
+          })
+        } else {
+          return (writer: CodeBlockWriter) => typeMapper(writer, () => writer.write('any'))
+        }
+      }
+    }
+    return null
   }
 
   _checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = [], unpack: boolean = false) {

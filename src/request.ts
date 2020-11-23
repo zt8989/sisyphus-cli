@@ -39,11 +39,7 @@ export interface swaggerParameter {
   items: {
     type: string
   }
-  schema: {
-    $ref: string
-    type: string
-    items: swaggerRefDefinition
-  }
+  schema: swaggerProperty
 }
 
 export interface swaggerRefDefinition {
@@ -61,7 +57,8 @@ export interface swaggerProperty {
   $ref?: string
   items: swaggerProperty
   enum?: string[] 
-  properties?: swaggerProperty
+  properties?: swaggerProperty,
+  additionalProperties?: swaggerProperty
 }
 export interface swaggerDefinition {
     type: string

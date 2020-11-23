@@ -1,18 +1,11 @@
 import { swaggerDefinition, swaggerJson } from './request';
-import { PropertyDeclarationStructure, ImportDeclarationStructure, CodeBlockWriter } from 'ts-simple-ast';
+import { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 import { ModelStruct } from './utils/modelNameParser'
 import BaseTool from './baseTool'
 import { join } from 'path';
 
 const logger = require('debug')('model')
-
-const scalarType = {
-  'string': 'string',
-  'boolean': 'boolean',
-  'integer': 'number',
-  'number': 'number'
-}
 
 export default class ModelTool extends BaseTool{
  
@@ -114,112 +107,15 @@ export default class ModelTool extends BaseTool{
     if (definition.type === "object") {
       for (let propName in definition.properties) {
         const prop = definition.properties[propName]
-        if (prop.$ref) {
-          if(!generic) {
-            const type = this.checkAndReturnType(prop.$ref, imports, [modelName])
-            properties.push({
-              name: propName,
-              type,
-              docs: prop.description ? [prop.description] : []
-            })
-          } else {
-            properties.push({
-              name: propName,
-              type: 'T',
-              docs: prop.description ? [prop.description] : []
-            })
-          }
-        }
-
-        if (prop.type) {
-          if (Reflect.has(scalarType, prop.type)) {
-            let type 
-            if(prop.type === scalarType.string && Array.isArray(prop.enum)) {
-              type = prop.enum.map(x => `'${x}'`).join(' | ')
-            } else {
-              type = Reflect.get(scalarType, prop.type)
-            }
-            properties.push({
-              name: propName,
-              type: type,
-              docs: prop.description ? [prop.description] : []
-            })
-          } else if (prop.type === 'array') {
-            if (prop.items.$ref) {
-              if(generic) {
-                properties.push({
-                  name: propName,
-                  type: `T[]`,
-                  docs: prop.description ? [prop.description] : []
-                })
-              } else {
-                const type = this.checkAndReturnType(prop.items.$ref, imports, [modelName])
-                properties.push({
-                  name: propName,
-                  type: `${type}[]`,
-                  docs: prop.description ? [prop.description] : []
-                })
-              }
-            } else if (prop.items.type && Reflect.has(scalarType, prop.items.type)) {
-              properties.push({
-                name: propName,
-                type: `${Reflect.get(scalarType, prop.items.type)}[]`,
-                docs: prop.description ? [prop.description] : []
-              })
-            } else if (prop.items.type === 'array') {
-              if (prop.items.items.$ref) {
-                const type = this.checkAndReturnType(prop.items.items.$ref, imports, [modelName])
-                properties.push({
-                  name: propName,
-                  type: `${type}[]`,
-                  docs: prop.description ? [prop.description] : []
-                })
-              }
-            } else if(prop.items.type === 'object') {
-              if(prop.items.properties){
-                const params = Object.keys(prop.items.properties).map(x => {
-                  return {
-                    // @ts-ignore
-                    ...prop.items.properties[x],
-                    name: x
-                  }
-                })
-                properties.push({
-                  name: propName,
-                  type: (writer: CodeBlockWriter) => {
-                    writer.write("{ ")
-                    this.writeTypes(params, writer)
-                    writer.write(" }[]")
-                  }
-                })
-              }
-            }
-          } else if (prop.type === 'object') {
-            if(prop.properties){
-              // @ts-ignore
-              const params = Object.keys(prop.properties).map(x => {
-                return {
-                  // @ts-ignore
-                  ...prop.properties[x],
-                  name: x
-                }
-              })
-              properties.push({
-                name: propName,
-                type: (writer: CodeBlockWriter) => {
-                  writer.write("{ ")
-                  this.writeTypes(params, writer)
-                  writer.write(" }")
-                }
-              })
-            } else {
-              properties.push({
-                name: propName,
-                type: 'object',
-                docs: prop.description ? [prop.description] : []
-              })
-            }
-          }
+        const type: PropertyDeclarationStructure["type"] | null = this.handleProp(prop, generic, imports, modelName, (writer, callback) => {
+          callback()
+        });
+        if(type) {
+          properties.push({
+            name: propName,
+            type,
+            docs: prop.description ? [prop.description] : []
+          })
         }
       }
     }

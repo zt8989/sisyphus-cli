@@ -261,7 +261,7 @@ export default class ApiTool extends BaseTool {
     if (queryParameters.length > 0) {
       const name = 'queryParams'
 
-      if(queryParameters.length > 3) {
+      if(queryParameters.length > 2) {
         const fileName = methodName + "Query"
         const typeName = fileName[0].toUpperCase() + fileName.slice(1)
         const define: swaggerDefinition = {
@@ -342,14 +342,40 @@ export default class ApiTool extends BaseTool {
             type,
           }
           docs.push(`@param {${type}} ${BODY_PARAMS} - ${param.description}`)
-        } else if (param.schema.type === 'array' && param.schema.items && param.schema.items.$ref) {
-          // 其他类型参数-array
-          const type = this.checkAndAddImport(param.schema.items.$ref, imports)
+        } else if(param.schema.type && scalarType[param.schema.type]){
           result[BODY_PARAMS] = {
             name: BODY_PARAMS,
-            type: type + '[]',
+            type: scalarType[param.schema.type],
           }
-          docs.push(`@param {${type}[]} ${BODY_PARAMS} - ${param.description}`)
+          docs.push(`@param {${scalarType[param.schema.type]}} ${BODY_PARAMS} - ${param.description}`)
+        } else if (param.schema.type === 'array') {
+          if(param.schema.items.$ref){
+            // 其他类型参数-array
+            const type = this.checkAndAddImport(param.schema.items.$ref, imports)
+            result[BODY_PARAMS] = {
+              name: BODY_PARAMS,
+              type: type + '[]',
+            }
+            docs.push(`@param {${type}[]} ${BODY_PARAMS} - ${param.description}`)
+          }else if(param.schema.items.type && scalarType[param.schema.items.type]){
+            result[BODY_PARAMS] = {
+              name: BODY_PARAMS,
+              type: scalarType[param.schema.items.type] + '[]',
+            }
+            docs.push(`@param {${scalarType[param.schema.items.type]}[]} ${BODY_PARAMS} - ${param.description}`)
+          } else {
+            result[BODY_PARAMS] = {
+              name: BODY_PARAMS,
+              type: 'any[]',
+            }
+            docs.push(`@param {any[]} ${BODY_PARAMS} - ${param.description}`)
+          }
+        } else if(param.schema.type === 'object'){
+          result[BODY_PARAMS] = {
+            name: BODY_PARAMS,
+            type: 'any',
+          }
+          docs.push(`@param any ${BODY_PARAMS} - ${param.description}`)
         } else {
           // 其他类型参数-object
           result[BODY_PARAMS] = {

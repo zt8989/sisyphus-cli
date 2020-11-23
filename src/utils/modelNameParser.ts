@@ -52,9 +52,9 @@ export default class ModelNameParser {
       nameRef.name += '[]'
       return
     } else if(data.name === 'Map'){
-      nameRef.name += `{ [key: string]: `
+      nameRef.name += `Record<string, `
       this._parserGenericString(data.children[1], nameRef)
-      nameRef.name += `}`
+      nameRef.name += `>`
       return
     } else {
       nameRef.name += data.name
