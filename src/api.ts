@@ -79,7 +79,6 @@ export default class ApiTool extends BaseTool {
       const urlsEnum: EnumDeclarationStructure = {
         name: URLS_ENUM_NAME,
         isExported: true,
-        isConst: true,
         members: []
       }
 
