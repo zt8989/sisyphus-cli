@@ -46,7 +46,7 @@ module.exports = {
   unpackResponse: true,
   optionalQuery: false,
   appendOptions: true,
-  onlyModel: false,
+  onlyTags: false,
   createTags: false,
   requestPath: "@/service/request.ts"
 }
@@ -88,9 +88,9 @@ outDir + "b" 下面生成请求文件和模型
 
 可选，增加额外的options, `function abc() { return request({}) }` => `function abc(options?: any) { return request({ ...options }) }`
 
-### onlyModel
+### onlyTags
 
-可选，只生成model, 默认false
+可选，根据tags生成对应的controller而不是所有, 默认false
 
 ### outDir
 
@@ -160,3 +160,7 @@ Q: 我遇到了中文的model怎么办？
 * 0.24
 
   修复字典解析错误的问题
+
+* 0.25
+
+  增加onlyTags选项，移除onlyModel
