@@ -43,7 +43,7 @@ module.exports = {
     dirSub.push(interfaceInfo.method.toLocaleLowerCase());
     return changeCase.camelCase(dirSub.join('_'));
   },
-  unpackResponse: true,
+  dataKey: 'data',
   optionalQuery: false,
   appendOptions: true,
   onlyTags: false,
@@ -76,9 +76,9 @@ outDir + "b" 下面生成请求文件和模型
 
 可选，命名策略， `interfaceInfo`接口信息，`changeCase`表示[`change-case`](https://www.npmjs.com/package/change-case)实例
 
-### unpackResponse
+### dataKey
 
-可选， 默认false，响应结果解包，比如 `Promise<Result<BaseVo>>` => `Promise<BaseVo>`
+可选，字符串，响应结果解包。`Result<T> { data: T, code: number, string }`,设置dataKey为`data`, `Promise<Result<BaseVo>>` => `Promise<BaseVo>`
 
 ### optionalQuery
 
@@ -164,3 +164,7 @@ Q: 我遇到了中文的model怎么办？
 * 0.25
 
   增加onlyTags选项，移除onlyModel
+
+* 0.26
+
+  增加dataKey，用于返回解包

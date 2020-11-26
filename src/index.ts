@@ -111,6 +111,7 @@ export interface ConfigDefinition {
   createTags?: boolean
   requestPath?: string
   onlyTags?: boolean
+  dataKey?: string
 }
 
 async function initProject(){

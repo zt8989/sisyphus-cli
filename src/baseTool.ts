@@ -237,12 +237,9 @@ export default class BaseTool {
     return null
   }
 
-  _checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = [], unpack: boolean = false) {
+  _checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
     const [isGeneric, parser] = this.getModelType(ref)
     if (isGeneric) {
-      if(unpack) {
-        parser.unpack()
-      }
       const data = parser.getData()
       const moduleSpecifier = this.getRelativePath(data.name)
       const importName = parser.asGenericString()
@@ -274,7 +271,7 @@ export default class BaseTool {
     return this._checkAndAddImport(ref.slice('#/definitions/'.length), imports, exclude)
   }
 
-  checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = [], unpack: boolean = false) {
-    return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports, exclude, unpack)
+  checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
+    return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports, exclude)
   }
 }

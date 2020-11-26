@@ -1,4 +1,4 @@
-import { swaggerDefinition, swaggerJson, swaggerParameter, swaggerRequest } from './request';
+import { swaggerDefinition, swaggerDefinitions, swaggerJson, swaggerParameter, swaggerRequest } from './request';
 import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter } from 'ts-simple-ast';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
@@ -107,7 +107,7 @@ export default class ApiTool extends BaseTool {
           functions.push({
             name: methodName,
             parameters: this.handleFunctionParameters(parameters),
-            returnType: this.getReturn(methods[method], imports),
+            returnType: this.getReturn(methods[method], imports, data.definitions),
             bodyText: writer => {
               writer.writeLine(`return request({`)
                 .writeLine(`url: bindUrl('${posix.join(data.basePath ,url)}', ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
@@ -452,13 +452,23 @@ export default class ApiTool extends BaseTool {
     fs.writeFileSync(path, JSON.stringify(map, null, '\n'))
   }
 
-  getReturn(path: swaggerRequest, imports: ImportDeclarationStructure[]) {
+  getReturn(path: swaggerRequest, imports: ImportDeclarationStructure[], definitions: swaggerDefinitions) {
     logger('getReturn', path)
     if (path.responses[200]) {
-      const schema = path.responses[200].schema
+      let schema = path.responses[200].schema
       if (schema && schema.$ref) {
-        const type = this.checkAndReturnType(schema.$ref, imports, [], this.context.config.unpackResponse)
-        return `Promise<${type}>`
+        let ref = schema.$ref
+        if(this.context.config.dataKey) {
+          const define = definitions[ref.slice('#/definitions/'.length)]
+          let schema = define.properties[this.context.config.dataKey]
+          if(schema && schema.$ref) {
+            const type = this.checkAndReturnType(schema.$ref, imports, [])
+            return `Promise<${type}>`
+          }
+        } else {
+          const type = this.checkAndReturnType(schema.$ref, imports, [])
+          return `Promise<${type}>`
+        }
       } else {
         // other
       }
