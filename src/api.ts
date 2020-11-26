@@ -1,5 +1,5 @@
 import { swaggerDefinition, swaggerDefinitions, swaggerJson, swaggerParameter, swaggerRequest } from './request';
-import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter } from 'ts-simple-ast';
+import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
@@ -74,6 +74,15 @@ export default class ApiTool extends BaseTool {
     }
     for (let tag of tags) {
       const tagName = this.getTag(tag.name)
+
+      const URLS_ENUM_NAME = tagName + "_URLS"
+      const urlsEnum: EnumDeclarationStructure = {
+        name: URLS_ENUM_NAME,
+        isExported: true,
+        isConst: true,
+        members: []
+      }
+
       const paths = data.paths
       const functions: FunctionDeclarationStructure[] = []
       const imports: ImportDeclarationStructure[] = [...defaultImports]
@@ -103,6 +112,11 @@ export default class ApiTool extends BaseTool {
           });
           const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
           const isDownload = this.isDownloadApi(methods[method])
+          // @ts-ignore
+          urlsEnum.members.push({
+            name: methodName,
+            value: posix.join(data.basePath ,url)
+          })
           logger('docs', docs)
           functions.push({
             name: methodName,
@@ -110,7 +124,7 @@ export default class ApiTool extends BaseTool {
             returnType: this.getReturn(methods[method], imports, data.definitions),
             bodyText: writer => {
               writer.writeLine(`return request({`)
-                .writeLine(`url: bindUrl('${posix.join(data.basePath ,url)}', ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
+                .writeLine(`url: bindUrl(${URLS_ENUM_NAME}.${methodName}, ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
                 .writeLine(`method: '${method.toUpperCase()}',`)
                 .conditionalWriteLine(parameters.hasOwnProperty(BODY_PARAMS), () => `data: ${BODY_PARAMS},`)
                 .conditionalWriteLine(parameters.hasOwnProperty(QUERY_PARAMS), () => `params: ${QUERY_PARAMS},`)
@@ -130,6 +144,7 @@ export default class ApiTool extends BaseTool {
         fs.unlinkSync(path)
       }
       project.createSourceFile(path, {
+        enums: [urlsEnum],
         imports,
         functions
       })
