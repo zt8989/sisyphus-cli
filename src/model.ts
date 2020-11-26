@@ -1,4 +1,4 @@
-import { swaggerDefinition, swaggerJson } from './request';
+import { swaggerDefinition, swaggerDefinitions, swaggerJson } from './request';
 import { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
 import fs from 'fs'
 import { ModelStruct } from './utils/modelNameParser'
@@ -8,9 +8,8 @@ import { join } from 'path';
 const logger = require('debug')('model')
 
 export default class ModelTool extends BaseTool{
- 
-  async genModels(data: swaggerJson) {
-    const project = this.project
+
+  async preMap(data: swaggerJson) {
     const definitions = data.definitions
     const count: Record<string, number> = {}
     const map: Record<string, string> = {}
@@ -38,44 +37,72 @@ export default class ModelTool extends BaseTool{
       }
     }
     this.context.fileMap = map
+  }
+
+  async genModels(data: swaggerJson) {
+    const definitions = data.definitions
 
     // 记录已经创建的泛型类
     const generic: string[] = []
 
-      for (let defineName in definitions) {
-        const definition = definitions[defineName]
-        let struct = this.checkAndModifyModelName(defineName)
-        if (struct !== false) {
-          const modelName = struct.name
+    for (let defineName in definitions) {
+      this.genDefintion(definitions, defineName, generic);
+    }
 
-          if(struct.children.length > 0 ) {
-            if(this.context.generic.some(x => x === modelName) && !generic.some(x => x === modelName)) {
-              generic.push(modelName)
-              const path = join(this.context.outDir, `model/${map[modelName]}.ts`)
-              if (fs.existsSync(path)) {
-                fs.unlinkSync(path)
+    for(let modelName of this.context.imports) {
+      if(definitions[modelName]){
+        this.genFile(modelName, definitions[modelName])
+      }
+    }
+  }
+
+  genDefintion(definitions: swaggerDefinitions, defineName: string, generic: string[]) {
+    const definition = definitions[defineName];
+    let struct = this.checkAndModifyModelName(defineName);
+    const map =  this.context.fileMap
+
+    if (struct !== false) {
+      const modelName = struct.name;
+
+      // 这是个泛型类型
+      if (struct.children.length > 0) {
+        if (this.context.generic.some(x => x === modelName) && !generic.some(x => x === modelName)) {
+          generic.push(modelName);
+          const path = join(this.context.outDir, `model/${map[modelName]}.ts`);
+          if (fs.existsSync(path)) {
+            fs.unlinkSync(path);
+          }
+          const imports: ImportDeclarationStructure[] = [];
+          const properties = this.getProperties(definition, imports, modelName, true);
+          this.project.createSourceFile(path, {
+            imports: imports,
+            interfaces: [
+              {
+                name: `${modelName}<T>`,
+                properties: properties,
+                isDefaultExport: true,
+                docs: definition.description ? [definition.description] : []
               }
-              const imports: ImportDeclarationStructure[] = []
-              const properties = this.getProperties(definition, imports, modelName, true)
-              project.createSourceFile(path, {
-                imports: imports,
-                interfaces: [
-                  {
-                    name: `${modelName}<T>`,
-                    properties: properties,
-                    isDefaultExport: true,
-                    docs: definition.description ? [definition.description] : []
-                  }
-                ]
-              })
-            }
-          } else {
-            if(!this.context.generic.some(x => x === (struct as ModelStruct).name)) {
-              this.genFile(struct.name, definition);
+            ]
+          });
+        }
+      } else {
+        // 如果不在泛型数组内且不是只生成指定tags 加入所有
+        if (!this.context.generic.some(x => x === (struct as ModelStruct).name)) {
+          if(!this.context.config.onlyTags || this.context.imports.has(struct.name)){
+            this.context.imports.add(modelName)
+            const imports: ImportDeclarationStructure[] = [];
+            this.getProperties(definition, imports, modelName);
           }
         }
       }
     }
+
+    // 清除泛型中的import
+    this.context.generic.forEach(x => {
+      this.context.imports.delete(x)
+    })
+
   }
 
   genFile(modelName: string, definition: swaggerDefinition) {

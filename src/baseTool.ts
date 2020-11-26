@@ -118,6 +118,7 @@ export default class BaseTool {
   }
 
   getRelativePath(model: string) {
+    this.context.imports.add(model)
     return `./${this.context.fileMap[model]}`
   }
 

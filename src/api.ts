@@ -68,19 +68,15 @@ export default class ApiTool extends BaseTool {
       namedImports: ['bindUrl', 'request']
     }]
 
-    const indexImports :ImportDeclarationStructure[] = []
-
-    for (let tag of data.tags) {
+    let tags = data.tags
+    if(this.context.config.onlyTags) {
+      tags = tags.filter(x => !!(this.context.config.tags || {})[x.name])
+    }
+    for (let tag of tags) {
       const tagName = this.getTag(tag.name)
       const paths = data.paths
       const functions: FunctionDeclarationStructure[] = []
       const imports: ImportDeclarationStructure[] = [...defaultImports]
-
-      // this.importGenerics(imports)
-      indexImports.push({
-        moduleSpecifier: `./${tagName}`,
-        defaultImport: `* as ${tagName}`
-      })
    
       for (let url in paths) {
         const methods = paths[url]
@@ -138,23 +134,6 @@ export default class ApiTool extends BaseTool {
         functions
       })
     }
-  
-    return
-    const path = join(this.context.outDir, `index.ts`)
-    if (fs.existsSync(path)) {
-      fs.unlinkSync(path)
-    }
-
-    let bodyText = 'export default {\r\n'
-    data.tags.forEach(tag => {
-      const tagName = this.getTag(tag.name)
-      bodyText += `\t${tagName},\r\n`
-    })
-    bodyText += '}'
-    project.createSourceFile(path, {
-      imports: indexImports,
-      bodyText: bodyText
-    })
   }
 
   /**
@@ -555,6 +534,7 @@ export default class ApiTool extends BaseTool {
   }
 
   getRelativePath(model: string) {
+    this.context.imports.add(model)
     return `./model/${this.context.fileMap[model]}`
   }
 }

@@ -36,18 +36,27 @@ program
       config,
       fileMap: {},
       outDir: key === 'default' ? config.outDir : join(config.outDir, key),
-      generic: []
+      generic: [],
+      imports: new Set<string>()
     }
-    await new ModelTool(context, project).genModels(data)
-    if(!config.onlyModel) {
-      await new ApiTool(context, project).genApis(data)
-    }
+
+    const modelService = new ModelTool(context, project)
+
+    await modelService.preMap(data)
+
+    await new ApiTool(context, project).genApis(data)
+
+    await modelService.genModels(data)
+    // if(!config.onlyModel) {
+    // }
     // await genIndex(project)
     await project.save()
   }
   const prettier = path.resolve(process.cwd() ,'./node_modules/.bin/prettier')
   if(fs.existsSync(prettier)){
-    exec(`${prettier} --write ${config.outDir}`)
+    exec(`${prettier} --write ${config.outDir}`, {
+      cwd: process.cwd()
+    })
   }
   console.log(`生成成功, 请修改${join(config.outDir, 'request.ts')}的request方法实现！`)
 })()
@@ -84,7 +93,8 @@ export interface Context {
   config: ConfigDefinition
   fileMap: Record<string, string>
   outDir: string
-  generic: string[]
+  generic: string[],
+  imports: Set<string>
 }
 
 export interface ConfigDefinition {
@@ -100,6 +110,7 @@ export interface ConfigDefinition {
   onlyModel?: boolean
   createTags?: boolean
   requestPath?: string
+  onlyTags?: boolean
 }
 
 async function initProject(){
@@ -136,6 +147,10 @@ function getConfig() {
 
   if(configJson.optionalQuery === undefined){
     configJson.optionalQuery = false
+  }
+
+  if(configJson.onlyTags === undefined) {
+    configJson.onlyTags = false
   }
 
   if(!configJson.outDir) {
