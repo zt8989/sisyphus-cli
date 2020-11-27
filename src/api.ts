@@ -1,5 +1,5 @@
 import { swaggerDefinition, swaggerDefinitions, swaggerJson, swaggerParameter, swaggerRequest } from './request';
-import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure } from 'ts-morph';
+import { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure, StructureKind } from 'ts-morph';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
@@ -63,8 +63,9 @@ export default class ApiTool extends BaseTool {
       this.createTags(data)
     }
 
-    const defaultImports :ImportDeclarationStructure[] = [{
+    const defaultImports : ImportDeclarationStructure[] = [{
       moduleSpecifier: this.context.config.requestPath || "",
+      kind: StructureKind.ImportDeclaration,
       namedImports: ['bindUrl', 'request']
     }]
 
@@ -79,7 +80,8 @@ export default class ApiTool extends BaseTool {
       const urlsEnum: EnumDeclarationStructure = {
         name: URLS_ENUM_NAME,
         isExported: true,
-        members: []
+        members: [],
+        kind: StructureKind.Enum
       }
 
       const paths = data.paths
@@ -118,10 +120,11 @@ export default class ApiTool extends BaseTool {
           })
           logger('docs', docs)
           functions.push({
+            kind: StructureKind.Function,
             name: methodName,
             parameters: this.handleFunctionParameters(parameters),
             returnType: this.getReturn(methods[method], imports, data.definitions),
-            bodyText: writer => {
+            statements: writer => {
               writer.writeLine(`return request({`)
                 .writeLine(`url: bindUrl(${URLS_ENUM_NAME}.${methodName}, ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
                 .writeLine(`method: '${method.toUpperCase()}',`)
@@ -133,7 +136,7 @@ export default class ApiTool extends BaseTool {
                 .writeLine('})')
             },
             docs: docs.length > 0 ? [docs.join('\n')] : [],
-            isExported: true
+            isExported: true,
           })
         }
       }
@@ -143,9 +146,7 @@ export default class ApiTool extends BaseTool {
         fs.unlinkSync(path)
       }
       project.createSourceFile(path, {
-        enums: [urlsEnum],
-        imports,
-        functions
+        statements: [...imports, urlsEnum, ...functions]
       })
     }
   }
@@ -161,75 +162,75 @@ export default class ApiTool extends BaseTool {
    * 生成request.ts
    * @param project 
    */
-  createRequestFile(project: Project){
-    const path = join(this.context.outDir, `request.ts`)
-    if (fs.existsSync(path)) {
-      // fs.unlinkSync(path)
-      return
-    }
+  // createRequestFile(project: Project){
+  //   const path = join(this.context.outDir, `request.ts`)
+  //   if (fs.existsSync(path)) {
+  //     // fs.unlinkSync(path)
+  //     return
+  //   }
     
-    project.createSourceFile(path, {
-      interfaces: [
-        {
-          name: 'AjaxRequest',
-          methods: [
-            {
-              name: '<T=any>',
-              parameters: [{ name: 'options', type: 'AjaxOptions' }],
-              returnType: 'Promise<T>'
-            }
-          ],
-          isExported: true
-        },
-        {
-          name: 'AjaxOptions',
-          properties: [
-            { name: 'url', type: 'string' },
-            { name: 'method', type: 'string', hasQuestionToken: true },
-            { name: 'baseURL', type: 'string', hasQuestionToken: true },
-            { name: 'headers', type: 'any', hasQuestionToken: true },
-            { name: 'params', type: 'any', hasQuestionToken: true },
-            { name: 'data', type: 'any', hasQuestionToken: true },
-            { name: 'responseType', type: 'string', hasQuestionToken: true },
-          ],
-          isExported: true
-        }
-      ],
-      functions: [
-        {
-          name: 'bindUrl',
-          parameters: [
-            { name: 'path', type: 'string' },
-            { name: PATH_PARAMS, type: 'any' }
-          ],
-          bodyText: `if (!path.match(/^\\//)) {
-    path = '/' + path;
-  }
-  var url = path;
-  url = url.replace(/\\{([\\w-]+)\\}/g, function(fullMatch, key) {
-    var value;
-    if (pathParams.hasOwnProperty(key)) {
-      value = pathParams[key];
-    } else {
-      value = fullMatch;
-    }
-    return encodeURIComponent(value);
-  });
-  return url;`,
-          isExported: true
-        },
-        {
-        name: 'request',
-        parameters: [
-          { name: 'params', type: 'AjaxOptions' },
-        ],
-        bodyText: `return new Promise(() => {})`,
-        returnType: 'Promise<any>',
-        isExported: true
-      },
-      ],
-    })
-  }
+  //   project.createSourceFile(path, {
+  //     interfaces: [
+  //       {
+  //         name: 'AjaxRequest',
+  //         methods: [
+  //           {
+  //             name: '<T=any>',
+  //             parameters: [{ name: 'options', type: 'AjaxOptions' }],
+  //             returnType: 'Promise<T>'
+  //           }
+  //         ],
+  //         isExported: true
+  //       },
+  //       {
+  //         name: 'AjaxOptions',
+  //         properties: [
+  //           { name: 'url', type: 'string' },
+  //           { name: 'method', type: 'string', hasQuestionToken: true },
+  //           { name: 'baseURL', type: 'string', hasQuestionToken: true },
+  //           { name: 'headers', type: 'any', hasQuestionToken: true },
+  //           { name: 'params', type: 'any', hasQuestionToken: true },
+  //           { name: 'data', type: 'any', hasQuestionToken: true },
+  //           { name: 'responseType', type: 'string', hasQuestionToken: true },
+  //         ],
+  //         isExported: true
+  //       }
+  //     ],
+  //     functions: [
+  //       {
+  //         name: 'bindUrl',
+  //         parameters: [
+  //           { name: 'path', type: 'string' },
+  //           { name: PATH_PARAMS, type: 'any' }
+  //         ],
+  //         bodyText: `if (!path.match(/^\\//)) {
+  //   path = '/' + path;
+  // }
+  // var url = path;
+  // url = url.replace(/\\{([\\w-]+)\\}/g, function(fullMatch, key) {
+  //   var value;
+  //   if (pathParams.hasOwnProperty(key)) {
+  //     value = pathParams[key];
+  //   } else {
+  //     value = fullMatch;
+  //   }
+  //   return encodeURIComponent(value);
+  // });
+  // return url;`,
+  //         isExported: true
+  //       },
+  //       {
+  //       name: 'request',
+  //       parameters: [
+  //         { name: 'params', type: 'AjaxOptions' },
+  //       ],
+  //       bodyText: `return new Promise(() => {})`,
+  //       returnType: 'Promise<any>',
+  //       isExported: true
+  //     },
+  //     ],
+  //   })
+  // }
 
   getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string }, methodName: string) {
     const result: { [key: string]: ParameterDeclarationStructure } = {}
@@ -241,6 +242,7 @@ export default class ApiTool extends BaseTool {
       docs.push(`@param {Object} ${name}`)
       this.getParameterDocs(name, pathParameters, docs)
       result[name] = {
+        kind: StructureKind.Parameter,
         name,
         type: (writer: CodeBlockWriter) => {
           writer.write("{ ")
@@ -305,10 +307,12 @@ export default class ApiTool extends BaseTool {
         })
         new ModelTool(this.context, this.project).genFile(typeName, define)
         result[name] = {
+          kind: StructureKind.Parameter,
           name: name,
           type: typeName
         }
         imports.push({
+          kind: StructureKind.ImportDeclaration,
           moduleSpecifier: this.getRelativePath(typeName),
           defaultImport: typeName
         })
@@ -316,6 +320,7 @@ export default class ApiTool extends BaseTool {
         docs.push(`@param {Object} ${name}`)
         this.getParameterDocs(name, queryParameters, docs)
         result[name] = {
+          kind: StructureKind.Parameter,
           name,
           type: (writer: CodeBlockWriter) => {
             writer.write("{ ")
@@ -331,12 +336,14 @@ export default class ApiTool extends BaseTool {
         if (param.schema.$ref) {
           const type = this.checkAndAddImport(param.schema.$ref, imports)
           result[BODY_PARAMS] = {
+            kind: StructureKind.Parameter,
             name: BODY_PARAMS,
             type,
           }
           docs.push(`@param {${type}} ${BODY_PARAMS} - ${param.description}`)
         } else if(param.schema.type && scalarType[param.schema.type]){
           result[BODY_PARAMS] = {
+            kind: StructureKind.Parameter,
             name: BODY_PARAMS,
             type: scalarType[param.schema.type],
           }
@@ -346,18 +353,21 @@ export default class ApiTool extends BaseTool {
             // 其他类型参数-array
             const type = this.checkAndAddImport(param.schema.items.$ref, imports)
             result[BODY_PARAMS] = {
+              kind: StructureKind.Parameter,
               name: BODY_PARAMS,
               type: type + '[]',
             }
             docs.push(`@param {${type}[]} ${BODY_PARAMS} - ${param.description}`)
           }else if(param.schema.items.type && scalarType[param.schema.items.type]){
             result[BODY_PARAMS] = {
+              kind: StructureKind.Parameter,
               name: BODY_PARAMS,
               type: scalarType[param.schema.items.type] + '[]',
             }
             docs.push(`@param {${scalarType[param.schema.items.type]}[]} ${BODY_PARAMS} - ${param.description}`)
           } else {
             result[BODY_PARAMS] = {
+              kind: StructureKind.Parameter,
               name: BODY_PARAMS,
               type: 'any[]',
             }
@@ -365,6 +375,7 @@ export default class ApiTool extends BaseTool {
           }
         } else if(param.schema.type === 'object'){
           result[BODY_PARAMS] = {
+            kind: StructureKind.Parameter,
             name: BODY_PARAMS,
             type: 'any',
           }
@@ -372,6 +383,7 @@ export default class ApiTool extends BaseTool {
         } else {
           // 其他类型参数-object
           result[BODY_PARAMS] = {
+            kind: StructureKind.Parameter,
             name: BODY_PARAMS,
             type: 'any',
           }
@@ -381,6 +393,7 @@ export default class ApiTool extends BaseTool {
         // api包含formData：如文件
         if (param.type === 'file') {
           result['bodyParams'] = {
+            kind: StructureKind.Parameter,
             name: 'bodyParams', 
             type: 'FormData',
           }
@@ -394,6 +407,7 @@ export default class ApiTool extends BaseTool {
 
     if(this.context.config.appendOptions) {
       result['options'] = {
+        kind: StructureKind.Parameter,
         name: 'options?',
         type: 'any',
       }
@@ -498,6 +512,7 @@ export default class ApiTool extends BaseTool {
         if (prop.$ref) {
           const type = this.checkAndAddImport(prop.$ref, imports)
           properties.push({
+            kind: StructureKind.Property,
             name: propName,
             type,
             docs: prop.description ? [prop.description] : []
@@ -507,6 +522,7 @@ export default class ApiTool extends BaseTool {
         if (prop.type) {
           if (Reflect.has(scalarType, prop.type)) {
             properties.push({
+              kind: StructureKind.Property,
               name: propName,
               type: Reflect.get(scalarType, prop.type),
               docs: prop.description ? [prop.description] : []
@@ -515,12 +531,14 @@ export default class ApiTool extends BaseTool {
             if (prop.items.$ref) {
               const type = this.checkAndAddImport(prop.items.$ref, imports)
               properties.push({
+                kind: StructureKind.Property,
                 name: propName,
                 type: `${type}[]`,
                 docs: prop.description ? [prop.description] : []
               })
             } else if (prop.items.type && Reflect.has(scalarType, prop.items.type)) {
               properties.push({
+                kind: StructureKind.Property,
                 name: propName,
                 type: `${Reflect.get(scalarType, prop.items.type)}[]`,
                 docs: prop.description ? [prop.description] : []
@@ -529,6 +547,7 @@ export default class ApiTool extends BaseTool {
               if (prop.items.items.$ref) {
                 const type = this.checkAndAddImport(prop.items.items.$ref, imports)
                 properties.push({
+                  kind: StructureKind.Property,
                   name: propName,
                   type: `${type}[]`,
                   docs: prop.description ? [prop.description] : []
@@ -537,6 +556,7 @@ export default class ApiTool extends BaseTool {
             }
           } else if (prop.type === 'object') {
             properties.push({
+              kind: StructureKind.Property,
               name: propName,
               type: 'object',
               docs: prop.description ? [prop.description] : []

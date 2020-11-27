@@ -1,6 +1,6 @@
 import { Context } from "./main";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
-import Project, { CodeBlockWriter, ImportDeclarationStructure, PropertyDeclarationStructure } from "ts-morph";
+import { CodeBlockWriter, ImportDeclarationStructure, Project, PropertyDeclarationStructure, StructureKind } from "ts-morph";
 import { swaggerParameter, swaggerProperty } from "./request";
 import { scalarType } from "./utils/enum";
 const logger = require('debug')('api')
@@ -130,6 +130,7 @@ export default class BaseTool {
           const moduleSpecifier = this.getRelativePath(i.name)
           if (!imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
             imports.push({
+              kind: StructureKind.ImportDeclaration,
               moduleSpecifier,
               defaultImport: importName
             })
@@ -147,6 +148,7 @@ export default class BaseTool {
       const importName = data.name
       if (!exclude.some(name => name === ref ) && !imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
         imports.push({
+          kind: StructureKind.ImportDeclaration,
           moduleSpecifier,
           defaultImport: importName
         })
@@ -159,6 +161,7 @@ export default class BaseTool {
 
       if (!exclude.some(name => name === ref ) && !imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
         imports.push({
+          kind: StructureKind.ImportDeclaration,
           moduleSpecifier,
           defaultImport: importName
         })
@@ -247,6 +250,7 @@ export default class BaseTool {
           && !imports.some(i => i.moduleSpecifier === moduleSpecifier) 
             && filterList.indexOf(data.name) === -1) {
         imports.push({
+          kind: StructureKind.ImportDeclaration,
           moduleSpecifier,
           defaultImport: data.name
         })
@@ -259,6 +263,7 @@ export default class BaseTool {
 
       if (!exclude.some(name => name === ref ) && !imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
         imports.push({
+          kind: StructureKind.ImportDeclaration,
           moduleSpecifier,
           defaultImport: importName
         })

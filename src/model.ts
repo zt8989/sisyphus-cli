@@ -1,5 +1,5 @@
 import { swaggerDefinition, swaggerDefinitions, swaggerJson } from './request';
-import { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-morph';
+import { PropertyDeclarationStructure, ImportDeclarationStructure, StructureKind, InterfaceDeclarationStructure, PropertySignatureStructure } from 'ts-morph';
 import fs from 'fs'
 import { ModelStruct } from './utils/modelNameParser'
 import BaseTool from './baseTool'
@@ -74,15 +74,18 @@ export default class ModelTool extends BaseTool{
           }
           const imports: ImportDeclarationStructure[] = [];
           const properties = this.getProperties(definition, imports, modelName, true);
+          const interfaces: InterfaceDeclarationStructure[] = [{
+            kind: StructureKind.Interface,
+            name: `${modelName}<T>`,
+            properties: properties,
+            isDefaultExport: true,
+            docs: definition.description ? [definition.description] : []
+          }]
+
           this.project.createSourceFile(path, {
-            imports: imports,
-            interfaces: [
-              {
-                name: `${modelName}<T>`,
-                properties: properties,
-                isDefaultExport: true,
-                docs: definition.description ? [definition.description] : []
-              }
+            statements: [
+              ...imports,
+              ...interfaces
             ]
           });
         }
@@ -116,21 +119,22 @@ export default class ModelTool extends BaseTool{
     }
     const imports: ImportDeclarationStructure[] = [];
     const properties = this.getProperties(definition, imports, modelName);
+    const interfaces: InterfaceDeclarationStructure[] = [
+      {
+        kind: StructureKind.Interface,
+        name: modelName,
+        properties: properties,
+        isDefaultExport: true,
+        docs: definition.description ? [definition.description] : []
+      }
+    ]
     this.project.createSourceFile(path, {
-      imports: imports,
-      interfaces: [
-        {
-          name: modelName,
-          properties: properties,
-          isDefaultExport: true,
-          docs: definition.description ? [definition.description] : []
-        }
-      ]
+      statements: [...imports, ...interfaces]
     });
   }
 
   getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[], modelName: string, generic = false) {
-    const properties: PropertyDeclarationStructure[] = []
+    const properties: PropertySignatureStructure[] = []
     if (definition.type === "object") {
       for (let propName in definition.properties) {
         const prop = definition.properties[propName]
@@ -139,6 +143,7 @@ export default class ModelTool extends BaseTool{
         });
         if(type) {
           properties.push({
+            kind: StructureKind.PropertySignature,
             name: propName,
             type,
             docs: prop.description ? [prop.description] : []
