@@ -1,6 +1,6 @@
-import { Context } from "./index";
+import { Context } from "./main";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
-import Project, { CodeBlockWriter, ImportDeclarationStructure, PropertyDeclarationStructure } from "ts-simple-ast";
+import Project, { CodeBlockWriter, ImportDeclarationStructure, PropertyDeclarationStructure } from "ts-morph";
 import { swaggerParameter, swaggerProperty } from "./request";
 import { scalarType } from "./utils/enum";
 const logger = require('debug')('api')

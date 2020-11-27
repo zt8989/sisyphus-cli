@@ -1,5 +1,5 @@
 import { swaggerDefinition, swaggerDefinitions, swaggerJson, swaggerParameter, swaggerRequest } from './request';
-import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure } from 'ts-simple-ast';
+import Project, { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure } from 'ts-morph';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'

@@ -1,5 +1,5 @@
 import { swaggerDefinition, swaggerDefinitions, swaggerJson } from './request';
-import { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-simple-ast';
+import { PropertyDeclarationStructure, ImportDeclarationStructure } from 'ts-morph';
 import fs from 'fs'
 import { ModelStruct } from './utils/modelNameParser'
 import BaseTool from './baseTool'
