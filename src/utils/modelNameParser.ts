@@ -46,8 +46,11 @@ export default class ModelNameParser {
     } else if (data.name === 'object') {
       nameRef.name += 'any'
     } else if (data.name === 'List') {
-      data.children.forEach(i => {
+      data.children.forEach((i, index) => {
         this._parserGenericString(i, nameRef)
+        if(index !== data.children.length - 1) {
+          nameRef.name += ', '
+        }
       })
       nameRef.name += '[]'
       return
@@ -61,8 +64,11 @@ export default class ModelNameParser {
     }
     if (data.children.length > 0) {
       nameRef.name += '<'
-      data.children.forEach(i => {
+      data.children.forEach((i, index) => {
         this._parserGenericString(i, nameRef)
+        if(index !== data.children.length - 1) {
+          nameRef.name += ', '
+        }
       })
       nameRef.name += '>'
     } else {
@@ -105,7 +111,7 @@ export default class ModelNameParser {
   parse() {
     const data: ModelStruct = { name: "", children: [] }
     let ref: ModelStruct = data
-    let prevRef: ModelStruct | null = null
+    let prevRefs: ModelStruct[] = []
     while (!this.isEnd()) {
       const token = this.readToken()
       if (token === TOKEN.LEFT) {
@@ -113,23 +119,24 @@ export default class ModelNameParser {
           name: "",
           children: []
         })
-        prevRef = ref
+        prevRefs.push(ref)
         ref = ref.children[ref.children.length - 1]
       } else if (token === TOKEN.RIGHT) {
-        // if(prevRef === null){
-        //   throw new Error('解析错误')
-        // }
-        // ref = prevRef
-        // prevRef = null
-      } else if (token === TOKEN.COMMA) {
-        if (prevRef === null) {
+        if(prevRefs.length === 0){
           throw new Error('解析错误')
         }
-        prevRef.children.push({
+        // @ts-ignore
+        ref = prevRefs.pop()
+      } else if (token === TOKEN.COMMA) {
+        if (prevRefs.length === 0) {
+          throw new Error('解析错误')
+        }
+        let tempRef = prevRefs[prevRefs.length - 1]
+        tempRef.children.push({
           name: "",
           children: []
         })
-        ref = prevRef.children[prevRef.children.length - 1]
+        ref = tempRef.children[tempRef.children.length - 1]
       } else {
         if (token) {
           ref.name = token
@@ -142,7 +149,7 @@ export default class ModelNameParser {
 
   readToken() {
     let name = this.name.slice(this.position)
-    const empty = name.match(/\s+/)
+    const empty = name.match(/^\s+/)
     if (empty) {
       name = name.slice(empty[0].length)
       this.position += empty[0].length
