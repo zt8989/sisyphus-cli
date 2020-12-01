@@ -2,15 +2,16 @@ import request from './request'
 import { Project } from 'ts-morph'
 import ModelTool from './model';
 import fs from 'fs'
-import ApiTool, { RenameOption } from './api';
+import ApiTool from './api';
 import path, { join } from 'path'
 import { promisify } from 'util'
 import ejs from 'ejs'
 import { exec } from 'child_process';
 import ora from 'ora';
+import { ConfigDefinition, Context } from './types';
 
 // @ts-ignore
-async function genIndex(project: Project) {
+async function genIndex() {
   if(!fs.existsSync('src')){
     await promisify(fs.mkdir)('src')
   }
@@ -36,31 +37,6 @@ async function getData(file: string) {
     return false
   }
   return data
-}
-
-export interface Context {
-  config: ConfigDefinition
-  fileMap: Record<string, string>
-  outDir: string
-  generic: string[],
-  imports: Set<string>
-}
-
-export interface ConfigDefinition {
-  file: string | { [key: string]: string },
-  outDir: string,
-  tags?: {
-    [key: string]: string
-  },
-  unpackResponse?: boolean,
-  nameStrategy?: (option: RenameOption, changeCase: any) => string,
-  optionalQuery?: boolean,
-  appendOptions?: boolean
-  onlyModel?: boolean
-  createTags?: boolean
-  requestPath?: string
-  onlyTags?: boolean
-  dataKey?: string
 }
 
 export async function initProject(cmdObj: any){

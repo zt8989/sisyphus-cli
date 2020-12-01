@@ -1,8 +1,7 @@
-import { Context } from "./main";
 import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
 import { CodeBlockWriter, ImportDeclarationStructure, Project, PropertyDeclarationStructure, StructureKind } from "ts-morph";
-import { swaggerParameter, swaggerProperty } from "./request";
 import { scalarType } from "./utils/enum";
+import { Context, SwaggerParameter, SwaggerProperty } from "./types";
 const logger = require('debug')('api')
 
 const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
@@ -16,19 +15,19 @@ export default class BaseTool {
     this.project = project
   }
 
-  writeTypes(parameters: swaggerParameter[], writer: CodeBlockWriter, optional: boolean = false) {
-    const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
-    const hasQueryObject = (p: swaggerParameter) => p.in === "query" && p.name.includes('.') && !p.name.includes('[0].')
+  writeTypes(parameters: SwaggerParameter[], writer: CodeBlockWriter, optional: boolean = false) {
+    const hasQueryArray = (p: SwaggerParameter) => p.in === "query" && p.name.includes('[0].')
+    const hasQueryObject = (p: SwaggerParameter) => p.in === "query" && p.name.includes('.') && !p.name.includes('[0].')
 
     const normalParameters = parameters.filter(p => !hasQueryArray(p) && !hasQueryObject(p))
     normalParameters.forEach((p, i) => {
       writer.write(i === 0 ? '' : ', ')
-      if (Reflect.has(scalarType, p.type)) {
+      if (Reflect.has(scalarType, p.type ?? "")) {
         let type 
         if(p.type === scalarType.string && Array.isArray(p.enum)) {
           type = p.enum.map(x => `'${x}'`).join(' | ')
         } else {
-          type = Reflect.get(scalarType, p.type)
+          type = Reflect.get(scalarType, p.type ?? "")
         }
         writer.write(`${p.name}${!p.required || optional ? '?':''}: ${type}`)
       } else if (p.type === 'array') {
@@ -37,8 +36,8 @@ export default class BaseTool {
           name = `'${name}'`
         }
         if (p.items) {
-          if (Reflect.has(scalarType, p.items.type)) {
-            writer.write(`${name}${!p.required || optional ? '?':''}: ${Reflect.get(scalarType, p.items.type)}[]`)
+          if (Reflect.has(scalarType, p?.items?.type ?? "")) {
+            writer.write(`${name}${!p.required || optional ? '?':''}: ${Reflect.get(scalarType, p?.items?.type ?? "")}[]`)
           } else {
             writer.write(`${name}${!p.required || optional ? '?':''}: any[]`)
           }
@@ -51,9 +50,9 @@ export default class BaseTool {
     })
 
     {
-      const list: { [key: string]: swaggerParameter[] } = {}
+      const list: { [key: string]: SwaggerParameter[] } = {}
       const seprator = '[0].'
-      const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
+      const queryArray: SwaggerParameter[] = parameters.filter(hasQueryArray)
       queryArray.forEach(q => {
         const [name, filed] = q.name.split(seprator)
         if (!list[name]) {
@@ -70,9 +69,9 @@ export default class BaseTool {
       }
     }
     {
-      const list: { [key: string]: swaggerParameter[] } = {}
+      const list: { [key: string]: SwaggerParameter[] } = {}
       const seprator = '.'
-      const queryObject: swaggerParameter[] = parameters.filter(hasQueryObject)
+      const queryObject: SwaggerParameter[] = parameters.filter(hasQueryObject)
       queryObject.forEach(q => {
         const [name, filed] = q.name.split(seprator)
         if (!list[name]) {
@@ -170,24 +169,24 @@ export default class BaseTool {
     }
   }
 
-  handleObjectProp = (prop: swaggerProperty) => {
+  handleObjectProp = (prop: SwaggerProperty) => {
     if(prop.type === 'object') {
 
     }
   }
 
-  handleArryaProp = (prop: swaggerProperty) => {
+  handleArryaProp = (prop: SwaggerProperty) => {
     if(prop.type === 'array') {
       this.handleProps(prop.items)
     }
   }
 
-  handleProps = (prop: swaggerProperty) => {
+  handleProps = (prop: SwaggerProperty) => {
     const list = [this.handleArryaProp, this.handleObjectProp]
     list.forEach(handler => handler(prop))
   }
 
-  handleProp(prop: swaggerProperty, generic: boolean, imports: ImportDeclarationStructure[], modelName: string, typeMapper: (writer: CodeBlockWriter, callback: () => void) => void): PropertyDeclarationStructure["type"] | null {
+  handleProp(prop: SwaggerProperty, generic: boolean, imports: ImportDeclarationStructure[], modelName: string, typeMapper: (writer: CodeBlockWriter, callback: () => void) => void): PropertyDeclarationStructure["type"] | null {
     if (prop.$ref) {
       if (!generic) {
         const type = this.checkAndReturnType(prop.$ref, imports, modelName ? [modelName]: []);

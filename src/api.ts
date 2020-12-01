@@ -1,20 +1,15 @@
-import { swaggerDefinition, swaggerDefinitions, swaggerJson, swaggerParameter, swaggerRequest } from './request';
 import { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure, StructureKind } from 'ts-morph';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
-import { join, ParsedPath, parse, posix } from 'path';
+import { join, parse, posix } from 'path';
 import * as changeCase from "change-case";
 import ModelTool from './model';
+import { RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest } from './types';
 const logger = require('debug')('api')
 
 const retainWord = ['delete']
-
-export type RenameOption = {
-  swaggerRequest: swaggerRequest, tagName: string, url:string, method:string,
-  parsedPath: ParsedPath
-}
 
 export default class ApiTool extends BaseTool {
 
@@ -56,7 +51,7 @@ export default class ApiTool extends BaseTool {
     return tag
   }
 
-  async genApis(data: swaggerJson) {
+  async genApis(data: SwaggerJson) {
     const project = this.project
     // this.createRequestFile(project)
     if(this.context.config.createTags) {
@@ -232,7 +227,7 @@ export default class ApiTool extends BaseTool {
   //   })
   // }
 
-  getParameters(path: swaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string }, methodName: string) {
+  getParameters(path: SwaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string }, methodName: string) {
     const result: { [key: string]: ParameterDeclarationStructure } = {}
     const parameters = path.parameters || []
 
@@ -259,7 +254,7 @@ export default class ApiTool extends BaseTool {
       if(queryParameters.length > 2) {
         const fileName = methodName + "Query"
         const typeName = fileName[0].toUpperCase() + fileName.slice(1)
-        const define: swaggerDefinition = {
+        const define: SwaggerDefinition = {
           type: 'object',
           required: true,
           properties: {},
@@ -333,7 +328,7 @@ export default class ApiTool extends BaseTool {
 
     for (let param of parameters) {
       if (param.in === 'body') {
-        if (param.schema.$ref) {
+        if (param?.schema?.$ref) {
           const type = this.checkAndAddImport(param.schema.$ref, imports)
           result[BODY_PARAMS] = {
             kind: StructureKind.Parameter,
@@ -341,15 +336,15 @@ export default class ApiTool extends BaseTool {
             type,
           }
           docs.push(`@param {${type}} ${BODY_PARAMS} - ${param.description}`)
-        } else if(param.schema.type && scalarType[param.schema.type]){
+        } else if(param?.schema?.type && Reflect.has(scalarType, param?.schema?.type ?? "")){
           result[BODY_PARAMS] = {
             kind: StructureKind.Parameter,
             name: BODY_PARAMS,
-            type: scalarType[param.schema.type],
+            type: scalarType[param.schema.type ?? ""],
           }
-          docs.push(`@param {${scalarType[param.schema.type]}} ${BODY_PARAMS} - ${param.description}`)
-        } else if (param.schema.type === 'array') {
-          if(param.schema.items.$ref){
+          docs.push(`@param {${scalarType[param.schema.type ?? ""]}} ${BODY_PARAMS} - ${param.description}`)
+        } else if (param?.schema?.type === 'array') {
+          if(param?.schema?.items?.$ref){
             // 其他类型参数-array
             const type = this.checkAndAddImport(param.schema.items.$ref, imports)
             result[BODY_PARAMS] = {
@@ -358,13 +353,13 @@ export default class ApiTool extends BaseTool {
               type: type + '[]',
             }
             docs.push(`@param {${type}[]} ${BODY_PARAMS} - ${param.description}`)
-          }else if(param.schema.items.type && scalarType[param.schema.items.type]){
+          }else if(param?.schema?.items?.type && scalarType[param.schema.items.type ?? ""]){
             result[BODY_PARAMS] = {
               kind: StructureKind.Parameter,
               name: BODY_PARAMS,
-              type: scalarType[param.schema.items.type] + '[]',
+              type: scalarType[param.schema.items.type ?? ""] + '[]',
             }
-            docs.push(`@param {${scalarType[param.schema.items.type]}[]} ${BODY_PARAMS} - ${param.description}`)
+            docs.push(`@param {${scalarType[param.schema.items.type ?? ""]}[]} ${BODY_PARAMS} - ${param.description}`)
           } else {
             result[BODY_PARAMS] = {
               kind: StructureKind.Parameter,
@@ -373,7 +368,7 @@ export default class ApiTool extends BaseTool {
             }
             docs.push(`@param {any[]} ${BODY_PARAMS} - ${param.description}`)
           }
-        } else if(param.schema.type === 'object'){
+        } else if(param?.schema?.type === 'object'){
           result[BODY_PARAMS] = {
             kind: StructureKind.Parameter,
             name: BODY_PARAMS,
@@ -415,7 +410,7 @@ export default class ApiTool extends BaseTool {
     return result
   }
 
-  isDownloadApi(path: swaggerRequest) {
+  isDownloadApi(path: SwaggerRequest) {
     // 下载相关接口
     if (path.responses[200]) {
       const schema = path.responses[200].schema
@@ -428,8 +423,8 @@ export default class ApiTool extends BaseTool {
     return false
   }
 
-  getParameterDocs(name: string, parameters: swaggerParameter[], docs: string[], isArray: boolean = false) {
-    const hasQueryArray = (p: swaggerParameter) => p.in === "query" && p.name.includes('[0].')
+  getParameterDocs(name: string, parameters: SwaggerParameter[], docs: string[], isArray: boolean = false) {
+    const hasQueryArray = (p: SwaggerParameter) => p.in === "query" && p.name.includes('[0].')
 
     const normalParameters = parameters.filter(p => !hasQueryArray(p))
 
@@ -438,12 +433,12 @@ export default class ApiTool extends BaseTool {
     }
 
     normalParameters.forEach((p) => {
-      if (Reflect.has(scalarType, p.type)) {
-        addDocs(Reflect.get(scalarType, p.type), `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
+      if (Reflect.has(scalarType, p.type ?? "")) {
+        addDocs(Reflect.get(scalarType, p.type ?? ""), `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
       } else if (p.type === 'array') {
         if (p.items) {
-          if (Reflect.has(scalarType, p.items.type)) {
-            addDocs(`${Reflect.get(scalarType, p.items.type)}[]`, `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
+          if (Reflect.has(scalarType, p?.items?.type ?? "")) {
+            addDocs(`${Reflect.get(scalarType, p?.items?.type ?? "")}[]`, `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
           }
         }
       } else {
@@ -451,9 +446,9 @@ export default class ApiTool extends BaseTool {
       }
     })
 
-    const list: { [key: string]: swaggerParameter[] } = {}
+    const list: { [key: string]: SwaggerParameter[] } = {}
     const seprator = '[0].'
-    const queryArray: swaggerParameter[] = parameters.filter(hasQueryArray)
+    const queryArray: SwaggerParameter[] = parameters.filter(hasQueryArray)
     queryArray.forEach(q => {
       const [name, filed] = q.name.split(seprator)
       if (!list[name]) {
@@ -467,7 +462,7 @@ export default class ApiTool extends BaseTool {
     }
   }
 
-  createTags(data: swaggerJson){
+  createTags(data: SwaggerJson){
     const path = `./tags.json`
     if (fs.existsSync(path)) {
       fs.unlinkSync(path)
@@ -480,7 +475,7 @@ export default class ApiTool extends BaseTool {
     fs.writeFileSync(path, JSON.stringify(map, null, '\n'))
   }
 
-  getReturn(path: swaggerRequest, imports: ImportDeclarationStructure[], definitions: swaggerDefinitions) {
+  getReturn(path: SwaggerRequest, imports: ImportDeclarationStructure[], definitions: SwaggerDefinitions) {
     logger('getReturn', path)
     if (path.responses[200]) {
       let schema = path.responses[200].schema
@@ -504,7 +499,7 @@ export default class ApiTool extends BaseTool {
     return "Promise<any>"
   }
 
-  getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[]) {
+  getProperties(definition: SwaggerDefinition, imports: ImportDeclarationStructure[]) {
     const properties: PropertyDeclarationStructure[] = []
     if (definition.type === "object") {
       for (let propName in definition.properties) {
@@ -528,7 +523,7 @@ export default class ApiTool extends BaseTool {
               docs: prop.description ? [prop.description] : []
             })
           } else if (prop.type === 'array') {
-            if (prop.items.$ref) {
+            if (prop?.items?.$ref) {
               const type = this.checkAndAddImport(prop.items.$ref, imports)
               properties.push({
                 kind: StructureKind.Property,
@@ -536,15 +531,15 @@ export default class ApiTool extends BaseTool {
                 type: `${type}[]`,
                 docs: prop.description ? [prop.description] : []
               })
-            } else if (prop.items.type && Reflect.has(scalarType, prop.items.type)) {
+            } else if (prop?.items?.type && Reflect.has(scalarType, prop.items.type ?? "")) {
               properties.push({
                 kind: StructureKind.Property,
                 name: propName,
-                type: `${Reflect.get(scalarType, prop.items.type)}[]`,
+                type: `${Reflect.get(scalarType, prop.items.type ?? "")}[]`,
                 docs: prop.description ? [prop.description] : []
               })
-            } else if (prop.items.type === 'array') {
-              if (prop.items.items.$ref) {
+            } else if (prop?.items?.type === 'array') {
+              if (prop?.items?.items?.$ref) {
                 const type = this.checkAndAddImport(prop.items.items.$ref, imports)
                 properties.push({
                   kind: StructureKind.Property,

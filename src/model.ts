@@ -1,15 +1,15 @@
-import { swaggerDefinition, swaggerDefinitions, swaggerJson } from './request';
 import { PropertyDeclarationStructure, ImportDeclarationStructure, StructureKind, InterfaceDeclarationStructure, PropertySignatureStructure } from 'ts-morph';
 import fs from 'fs'
 import { ModelStruct } from './utils/modelNameParser'
 import BaseTool from './baseTool'
 import { join } from 'path';
+import { SwaggerDefinition, SwaggerDefinitions, SwaggerJson } from './types';
 
 const logger = require('debug')('model')
 
 export default class ModelTool extends BaseTool{
 
-  async preMap(data: swaggerJson) {
+  async preMap(data: SwaggerJson) {
     const definitions = data.definitions
     const count: Record<string, number> = {}
     const map: Record<string, string> = {}
@@ -39,7 +39,7 @@ export default class ModelTool extends BaseTool{
     this.context.fileMap = map
   }
 
-  async genModels(data: swaggerJson) {
+  async genModels(data: SwaggerJson) {
     const definitions = data.definitions
 
     // 记录已经创建的泛型类
@@ -56,7 +56,7 @@ export default class ModelTool extends BaseTool{
     }
   }
 
-  genDefintion(definitions: swaggerDefinitions, defineName: string, generic: string[]) {
+  genDefintion(definitions: SwaggerDefinitions, defineName: string, generic: string[]) {
     const definition = definitions[defineName];
     let struct = this.checkAndModifyModelName(defineName);
     const map =  this.context.fileMap
@@ -108,7 +108,7 @@ export default class ModelTool extends BaseTool{
 
   }
 
-  genFile(modelName: string, definition: swaggerDefinition) {
+  genFile(modelName: string, definition: SwaggerDefinition) {
     const map = this.context.fileMap
     if(!this.context.fileMap[modelName]){
       this.context.fileMap[modelName] = modelName
@@ -133,7 +133,7 @@ export default class ModelTool extends BaseTool{
     });
   }
 
-  getProperties(definition: swaggerDefinition, imports: ImportDeclarationStructure[], modelName: string, generic = false) {
+  getProperties(definition: SwaggerDefinition, imports: ImportDeclarationStructure[], modelName: string, generic = false) {
     const properties: PropertySignatureStructure[] = []
     if (definition.type === "object") {
       for (let propName in definition.properties) {
