@@ -55,6 +55,7 @@ export interface SwaggerRequest {
     description: string
     operationId: string
     parameters: SwaggerParameter[]
+    deprecated?: boolean
     responses: {
       "200": {
         schema: {

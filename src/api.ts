@@ -98,6 +98,10 @@ export default class ApiTool extends BaseTool {
             docs.push(methods[method].description)
           }
           docs.push(`${method.toUpperCase()} ${posix.join(data.basePath ,url)}`)
+
+          if(methods[method]?.deprecated === true) {
+            docs.push(`@deprecated`)
+          }
        
           const methodName = this.handleOperationId({
             swaggerRequest: methods[method],
