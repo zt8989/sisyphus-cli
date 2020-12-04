@@ -26,6 +26,7 @@
   ],
   "dependencies": {
     "@types/ejs": "^2.6.0",
+    "@types/lodash": "^4.14.165",
     "@types/node": "^10.12.10",
     "axios": "^0.18.1",
     "change-case": "^4.1.1",

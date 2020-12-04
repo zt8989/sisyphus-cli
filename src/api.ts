@@ -7,7 +7,7 @@ import { join, parse, posix } from 'path';
 import * as changeCase from "change-case";
 import { RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest } from './types';
 import ModelFile from './modelFile';
-import { getRequestConfigByOperationId } from 'swagger-faker'
+const {getRequestConfigByOperationId } = require('swagger-faker')
 import beautify from "json-beautify"
 const logger = require('debug')('api')
 
@@ -180,7 +180,7 @@ export default class ApiTool extends BaseTool {
     const request = getRequestConfigByOperationId(swagger as any, operationId);
     const response = request?.response || {}
     if(this.context.config.mockOverwrite && typeof this.context.config.mockOverwrite === 'function'){
-      return this.context.config.mockOverwrite(response)
+      return this.context.config.mockOverwrite(request)
     }
     return response
   }

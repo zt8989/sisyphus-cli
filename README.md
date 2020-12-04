@@ -144,8 +144,8 @@ export { request, bindUrl };
 可选，null， mock响应覆盖
 
 ```javascript
-  mockOverwrite: response => {
-    return Object.assign({}, response, {
+  mockOverwrite: result => {
+    return Object.assign({}, result.response, {
       "resultCode": 100,
       "resultMsg": "",
       "success": true
