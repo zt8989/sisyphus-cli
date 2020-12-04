@@ -40,7 +40,7 @@ async function getData(file: string) {
   return data
 }
 
-export async function initProject(cmdObj: any){
+async function initProject(cmdObj: any){
   const projectName = cmdObj.name 
   const files = await promisify(fs.readdir)(path.resolve(__dirname, '../sample'))
   const readFile = promisify(fs.readFile)
@@ -110,7 +110,7 @@ function getValues(map: Record<string, string>) {
   return Object.keys(map).map(x => map[x])
 }
 
-export async function importSwagger(cmdObj: any) {
+async function importSwagger(cmdObj: any) {
   const config = getConfig(cmdObj)
   if (config === false) return
 
@@ -164,5 +164,7 @@ export default function(args: any) {
 }
 
 export {
-  createApp
+  createApp,
+  importSwagger,
+  initProject
 }
