@@ -50,8 +50,8 @@ module.exports = {
   createTags: false,
   requestPath: "@/service/request.ts",
   mock: true,
-  mockOverwrite: response => {
-    return Object.assign({}, response, {
+  mockOverwrite: result => {
+    return Object.assign({}, result.response, {
       "resultCode": 100,
       "resultMsg": "",
       "success": true
