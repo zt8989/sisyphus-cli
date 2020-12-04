@@ -4,7 +4,7 @@ export type ModelStruct = {
   children: ModelStruct[]
 }
 
-const TOKEN = {
+export const TOKEN = {
   LEFT: "«",
   RIGHT: "»",
   COMMA: ","

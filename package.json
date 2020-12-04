@@ -32,7 +32,10 @@
     "commander": "^2.19.0",
     "debug": "^4.1.0",
     "ejs": "^2.6.1",
+    "json-beautify": "^1.1.1",
+    "lodash": "^4.17.20",
     "ora": "^5.1.0",
+    "swagger-faker": "^2.0.0",
     "ts-morph": "^9.1.0"
   }
 }

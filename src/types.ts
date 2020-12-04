@@ -10,7 +10,7 @@ export interface Context {
   fileMap: Record<string, string>
   outDir: string
   generic: string[],
-  imports: Set<string>
+  imports: string[]
 }
 
 export interface ConfigDefinition {
@@ -28,6 +28,8 @@ export interface ConfigDefinition {
   requestPath?: string
   onlyTags?: boolean
   dataKey?: string
+  mock?: boolean
+  mockOverwrite?: (response: any) => any
 }
 
 export interface SwaggerJson {

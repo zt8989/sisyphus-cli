@@ -48,7 +48,15 @@ module.exports = {
   appendOptions: true,
   onlyTags: false,
   createTags: false,
-  requestPath: "@/service/request.ts"
+  requestPath: "@/service/request.ts",
+  mock: true,
+  mockOverwrite: response => {
+    return Object.assign({}, response, {
+      "resultCode": 100,
+      "resultMsg": "",
+      "success": true
+    })
+  }
 }
 ```
 
@@ -128,6 +136,23 @@ export { request, bindUrl };
 ### createTags
 
 可选，默认false， 生成tags文件方便映射
+
+### mock
+可选，默认false， 在src同级mock目录下生成mock文件
+
+### mockOverwrite
+可选，null， mock响应覆盖
+
+```javascript
+  mockOverwrite: response => {
+    return Object.assign({}, response, {
+      "resultCode": 100,
+      "resultMsg": "",
+      "success": true
+    })
+  }
+```
+
 # QA
 
 Q: 我遇到了中文的model怎么办？

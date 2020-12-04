@@ -5,13 +5,17 @@ import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
 import { join, parse, posix } from 'path';
 import * as changeCase from "change-case";
-import ModelTool from './model';
 import { RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest } from './types';
+import ModelFile from './modelFile';
+import { getRequestConfigByOperationId } from 'swagger-faker'
+import beautify from "json-beautify"
 const logger = require('debug')('api')
 
 const retainWord = ['delete']
 
 export default class ApiTool extends BaseTool {
+
+  private mockObject: Record<string, any> = {}
 
   handleOperationId(option: RenameOption){
     const { swaggerRequest, tagName } = option
@@ -112,10 +116,11 @@ export default class ApiTool extends BaseTool {
           });
           const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
           const isDownload = this.isDownloadApi(methods[method])
+          const fullUrl = posix.join(data.basePath ,url)
           // @ts-ignore
           urlsEnum.members.push({
             name: methodName,
-            value: posix.join(data.basePath ,url)
+            value: fullUrl
           })
           logger('docs', docs)
           functions.push({
@@ -137,6 +142,11 @@ export default class ApiTool extends BaseTool {
             docs: docs.length > 0 ? [docs.join('\n')] : [],
             isExported: true,
           })
+
+          if(this.context.config.mock) {
+            const mockData = this.getMockData(data, methods[method].operationId)
+            this.mockObject[`${method.toUpperCase()} ${fullUrl}`] = mockData
+          }
         }
       }
 
@@ -147,6 +157,15 @@ export default class ApiTool extends BaseTool {
       project.createSourceFile(path, {
         statements: [...imports, urlsEnum, ...functions]
       })
+      if(this.context.config.mock) {
+        const mockPath = join(process.cwd(), 'mock', `${tagName}.ts`)
+        if (fs.existsSync(mockPath)) {
+          fs.unlinkSync(mockPath)
+        }
+        project.createSourceFile(mockPath,(writer: CodeBlockWriter) => {
+          writer.write("export default " + beautify(this.mockObject, null as any, 2, 100))
+        })
+      }
     }
   }
 
@@ -155,6 +174,15 @@ export default class ApiTool extends BaseTool {
    */
   handleFunctionParameters(parameters: { [key: string]: ParameterDeclarationStructure }) {
     return Object.keys(parameters).map(x => parameters[x])
+  }
+
+  getMockData(swagger: SwaggerJson, operationId: string){
+    const request = getRequestConfigByOperationId(swagger as any, operationId);
+    const response = request?.response || {}
+    if(this.context.config.mockOverwrite && typeof this.context.config.mockOverwrite === 'function'){
+      return this.context.config.mockOverwrite(response)
+    }
+    return response
   }
 
   /**
@@ -304,7 +332,7 @@ export default class ApiTool extends BaseTool {
             define.properties[x.name] = x as any
           }
         })
-        new ModelTool(this.context, this.project).genFile(typeName, define)
+        new ModelFile(this.context, this.project, typeName, define).create()
         result[name] = {
           kind: StructureKind.Parameter,
           name: name,
@@ -489,11 +517,11 @@ export default class ApiTool extends BaseTool {
           const define = definitions[ref.slice('#/definitions/'.length)]
           let schema = define.properties[this.context.config.dataKey]
           if(schema && schema.$ref) {
-            const type = this.checkAndReturnType(schema.$ref, imports, [])
+            const type = this.checkAndAddImport(schema.$ref, imports, [])
             return `Promise<${type}>`
           }
         } else {
-          const type = this.checkAndReturnType(schema.$ref, imports, [])
+          const type = this.checkAndAddImport(schema.$ref, imports, [])
           return `Promise<${type}>`
         }
       } else {
@@ -577,7 +605,6 @@ export default class ApiTool extends BaseTool {
   }
 
   getRelativePath(model: string) {
-    this.context.imports.add(model)
-    return `./model/${this.context.fileMap[model]}`
+    return `./model/${this.context.fileMap[model] || model}`
   }
 }

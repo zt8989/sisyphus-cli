@@ -124,7 +124,7 @@ export async function importSwagger(cmdObj: any) {
       fileMap: {},
       outDir: key === 'default' ? config.outDir : join(config.outDir, key),
       generic: [],
-      imports: new Set<string>()
+      imports: []
     }
 
     const modelService = new ModelTool(context, project)

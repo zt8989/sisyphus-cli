@@ -43,6 +43,15 @@
     multimatch "^5.0.0"
     typescript "~4.1.2"
 
+"@ts-tool/ts-codegen@0.7.7":
+  version "0.7.7"
+  resolved "https://registry.npm.taobao.org/@ts-tool/ts-codegen/download/@ts-tool/ts-codegen-0.7.7.tgz#633831dc3ad79ca7410471720b435e9773d379e6"
+  integrity sha1-Yzgx3DrXnKdBBHFyC0Nel3PTeeY=
+  dependencies:
+    "@types/swagger-schema-official" "2.0.x"
+    axios "0.19.x"
+    prettier "1.18.x"
+
 "@types/ejs@^2.6.0":
   version "2.7.0"
   resolved "https://registry.npm.taobao.org/@types/ejs/download/@types/ejs-2.7.0.tgz?cache=0&sync_timestamp=1605053947274&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2F%40types%2Fejs%2Fdownload%2F%40types%2Fejs-2.7.0.tgz#bc84e083eae38f64a287a6dab9012bbe1d96e295"
@@ -57,6 +66,11 @@
   version "10.17.47"
   resolved "https://registry.npm.taobao.org/@types/node/download/@types/node-10.17.47.tgz#cc88a242a835789456cfcf374928400d9f4b291c"
   integrity sha1-zIiiQqg1eJRWz883SShADZ9LKRw=
+
+"@types/swagger-schema-official@2.0.x":
+  version "2.0.21"
+  resolved "https://registry.npm.taobao.org/@types/swagger-schema-official/download/@types/swagger-schema-official-2.0.21.tgz#56812a86dcd57ba60e5c51705ee96a2b2dc9b374"
+  integrity sha1-VoEqhtzVe6YOXFFwXulqKy3Js3Q=
 
 ansi-regex@^5.0.0:
   version "5.0.0"
@@ -84,6 +98,13 @@ arrify@^2.0.1:
   version "2.0.1"
   resolved "https://registry.npm.taobao.org/arrify/download/arrify-2.0.1.tgz#c9655e9331e0abcd588d2a7cad7e9956f66701fa"
   integrity sha1-yWVekzHgq81YjSp8rX6ZVvZnAfo=
+
+axios@0.19.x:
+  version "0.19.2"
+  resolved "https://registry.npm.taobao.org/axios/download/axios-0.19.2.tgz#3ea36c5d8818d0d5f8a8a97a6d36b86cdc00cb27"
+  integrity sha1-PqNsXYgY0NX4qKl6bTa4bNwAyyc=
+  dependencies:
+    follow-redirects "1.5.10"
 
 axios@^0.18.1:
   version "0.18.1"
@@ -243,6 +264,11 @@ ejs@^2.6.1:
   resolved "https://registry.npm.taobao.org/ejs/download/ejs-2.7.4.tgz?cache=0&sync_timestamp=1597678507367&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Fejs%2Fdownload%2Fejs-2.7.4.tgz#48661287573dcc53e366c7a1ae52c3a120eec9ba"
   integrity sha1-SGYSh1c9zFPjZsehrlLDoSDuybo=
 
+faker@4.1.x:
+  version "4.1.0"
+  resolved "https://registry.npm.taobao.org/faker/download/faker-4.1.0.tgz#1e45bbbecc6774b3c195fad2835109c6d748cc3f"
+  integrity sha1-HkW7vsxndLPBlfrSg1EJxtdIzD8=
+
 fast-glob@^3.2.4:
   version "3.2.4"
   resolved "https://registry.npm.taobao.org/fast-glob/download/fast-glob-3.2.4.tgz#d20aefbf99579383e7f3cc66529158c9b98554d3"
@@ -354,6 +380,16 @@ is-windows@^1.0.1:
   version "1.0.2"
   resolved "https://registry.npm.taobao.org/is-windows/download/is-windows-1.0.2.tgz#d1850eb9791ecd18e6182ce12a30f396634bb19d"
   integrity sha1-0YUOuXkezRjmGCzhKjDzlmNLsZ0=
+
+json-beautify@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.npm.taobao.org/json-beautify/download/json-beautify-1.1.1.tgz#8a1ed511ad5d52ca63ed29f7c61896c6a6ebbb9f"
+  integrity sha1-ih7VEa1dUspj7Sn3xhiWxqbru58=
+
+lodash@^4.17.20:
+  version "4.17.20"
+  resolved "https://registry.npm.taobao.org/lodash/download/lodash-4.17.20.tgz?cache=0&sync_timestamp=1597336082988&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Flodash%2Fdownload%2Flodash-4.17.20.tgz#b44a9b6297bcb698f1c51a3545a2b3b368d59c52"
+  integrity sha1-tEqbYpe8tpjxxRo1RaKzs2jVnFI=
 
 log-symbols@^4.0.0:
   version "4.0.0"
@@ -483,6 +519,11 @@ picomatch@^2.0.5, picomatch@^2.2.1:
   resolved "https://registry.npm.taobao.org/picomatch/download/picomatch-2.2.2.tgz#21f333e9b6b8eaff02468f5146ea406d345f4dad"
   integrity sha1-IfMz6ba46v8CRo9RRupAbTRfTa0=
 
+prettier@1.18.x:
+  version "1.18.2"
+  resolved "https://registry.npm.taobao.org/prettier/download/prettier-1.18.2.tgz?cache=0&sync_timestamp=1606521202472&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Fprettier%2Fdownload%2Fprettier-1.18.2.tgz#6823e7c5900017b4bd3acf46fe9ac4b4d7bda9ea"
+  integrity sha1-aCPnxZAAF7S9Os9G/prEtNe9qeo=
+
 restore-cursor@^3.1.0:
   version "3.1.0"
   resolved "https://registry.npm.taobao.org/restore-cursor/download/restore-cursor-3.1.0.tgz#39f67c54b3a7a58cea5236d95cf0034239631f7e"
@@ -536,6 +577,15 @@ supports-color@^7.1.0:
   integrity sha1-G33NyzK4E4gBs+R4umpRyqiWSNo=
   dependencies:
     has-flag "^4.0.0"
+
+swagger-faker@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.npm.taobao.org/swagger-faker/download/swagger-faker-2.0.0.tgz#a821ae37b20abe658e133f70908c671a02d76613"
+  integrity sha1-qCGuN7IKvmWOEz9wkIxnGgLXZhM=
+  dependencies:
+    "@ts-tool/ts-codegen" "0.7.7"
+    "@types/swagger-schema-official" "2.0.x"
+    faker "4.1.x"
 
 to-regex-range@^5.0.1:
   version "5.0.1"

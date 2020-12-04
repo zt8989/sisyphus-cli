@@ -109,7 +109,7 @@ export default class BaseTool {
     parser.parse()
     const struct = parser.getData()
     // console.log(this.context.generic)
-    if (struct && this.context.generic.some(g => g === struct.name)) {
+    if (struct && struct.children.length > 0) {
       return [true, parser]
     } else {
       return [false, parser]
@@ -117,8 +117,7 @@ export default class BaseTool {
   }
 
   getRelativePath(model: string) {
-    this.context.imports.add(model)
-    return `./${this.context.fileMap[model]}`
+    return `./${this.context.fileMap[model] || model}`
   }
 
   importGeneric(data: ModelStruct, imports: ImportDeclarationStructure[]) {
@@ -153,7 +152,7 @@ export default class BaseTool {
         })
       }
       this.importGeneric(data, imports)
-      return importName
+      return parser.asGenericString()
     } else {
       const importName = parser.asString()
       const moduleSpecifier = this.getRelativePath(importName)
@@ -186,10 +185,14 @@ export default class BaseTool {
     list.forEach(handler => handler(prop))
   }
 
-  handleProp(prop: SwaggerProperty, generic: boolean, imports: ImportDeclarationStructure[], modelName: string, typeMapper: (writer: CodeBlockWriter, callback: () => void) => void): PropertyDeclarationStructure["type"] | null {
+  handleRef = (prop: SwaggerParameter) => {
+    
+  }
+
+  _handleProp(prop: SwaggerProperty, generic: boolean, imports: ImportDeclarationStructure[], modelName: string, typeMapper: (writer: CodeBlockWriter, callback: () => void) => void): PropertyDeclarationStructure["type"] | null {
     if (prop.$ref) {
       if (!generic) {
-        const type = this.checkAndReturnType(prop.$ref, imports, modelName ? [modelName]: []);
+        const type = this.checkAndAddImport(prop.$ref, imports, modelName ? [modelName]: []);
         return (writer: CodeBlockWriter) => typeMapper(writer, () => writer.write(type))
       } else {
         return (writer: CodeBlockWriter) => typeMapper(writer, () => writer.write('T'))
@@ -206,7 +209,7 @@ export default class BaseTool {
         }
         return (writer: CodeBlockWriter) => typeMapper(writer, () => writer.write(type))
       } else if (prop.type === 'array') {
-        return this.handleProp(prop.items, generic, imports, modelName, (writer, callback) => {
+        return this._handleProp(prop.items, generic, imports, modelName, (writer, callback) => {
           callback()
           writer.write("[]")
         })
@@ -226,7 +229,7 @@ export default class BaseTool {
               writer.write(" }");
             })
         } else if(prop.additionalProperties) {
-          return this.handleProp(prop.additionalProperties, generic, imports, modelName, (writer, callback) => {
+          return this._handleProp(prop.additionalProperties, generic, imports, modelName, (writer, callback) => {
             writer.write("Record<string, ")
             callback()
             writer.write(">")
@@ -272,10 +275,14 @@ export default class BaseTool {
   }
 
   checkAndAddImport(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
-    return this._checkAndAddImport(ref.slice('#/definitions/'.length), imports, exclude)
+    const name = this.getModelNameFromRef(ref)
+    if(!this.context.imports.includes(ref)){
+      this.context.imports.push(ref)
+    }
+    return this._checkAndAddImport(name, imports, exclude)
   }
 
-  checkAndReturnType(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
-    return this._checkAndReturnType(ref.slice('#/definitions/'.length), imports, exclude)
+  getModelNameFromRef(ref: string){
+    return ref.slice('#/definitions/'.length)
   }
 }
