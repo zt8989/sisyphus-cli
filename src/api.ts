@@ -158,12 +158,21 @@ export default class ApiTool extends BaseTool {
         statements: [...imports, urlsEnum, ...functions]
       })
       if(this.context.config.mock) {
-        const mockPath = join(process.cwd(), 'mock', `${tagName}.ts`)
+        const mockPath = join(process.cwd(), 'mock', `${tagName}.js`)
         if (fs.existsSync(mockPath)) {
           fs.unlinkSync(mockPath)
         }
         project.createSourceFile(mockPath,(writer: CodeBlockWriter) => {
-          writer.write("export default " + beautify(this.mockObject, null as any, 2, 100))
+          writer.write(`const mockData = ${beautify(this.mockObject, null as any, 2, 100)}`)
+          writer.writeLine("")
+          writer.writeLine("module.exports = {" )
+          Object.keys(this.mockObject).forEach(url => {
+            writer.writeLine(`  "${url}": (req, res) => {`)
+            writer.writeLine(`    res.setHeader('Access-Control-Allow-Origin', '*')`)
+            writer.write(`    res.json(mockData['${url}'])`)
+            writer.writeLine(`  },`)
+          })
+          writer.writeLine("}")
         })
       }
     }

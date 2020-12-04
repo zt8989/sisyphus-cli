@@ -9,6 +9,7 @@ import ejs from 'ejs'
 import { exec } from 'child_process';
 import ora from 'ora';
 import { ConfigDefinition, Context } from './types';
+import { createApp } from './site';
 
 // @ts-ignore
 async function genIndex() {
@@ -154,5 +155,14 @@ export default function(args: any) {
     return
   }
 
+  if(args.mock){
+    createApp()
+    return
+  }
+
   importSwagger(args)
+}
+
+export {
+  createApp
 }
