@@ -168,7 +168,6 @@ export default class ApiTool extends BaseTool {
           writer.writeLine("module.exports = {" )
           Object.keys(this.mockObject).forEach(url => {
             writer.writeLine(`  "${url}": (req, res) => {`)
-            writer.writeLine(`    res.setHeader('Access-Control-Allow-Origin', '*')`)
             writer.write(`    res.json(mockData['${url}'])`)
             writer.writeLine(`  },`)
           })
