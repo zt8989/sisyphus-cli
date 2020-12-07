@@ -10,6 +10,7 @@ import { exec } from 'child_process';
 import ora from 'ora';
 import { ConfigDefinition, Context } from './types';
 import { createApp } from './site';
+import inquirer from 'inquirer'
 
 // @ts-ignore
 async function genIndex() {
@@ -114,7 +115,31 @@ async function importSwagger(cmdObj: any) {
   const config = getConfig(cmdObj)
   if (config === false) return
 
-  const files = typeof config.file === 'string' ? { default: config.file } : config.file
+  let files = typeof config.file === 'string' ? { default: config.file } : config.file
+
+  if(Object.keys(files).length > 1){
+    const choices = Object.keys(files).map(x => `[${x}]: ${files[x]}`)
+    const name = "select your import swagger, press <enter> to download all"
+    const answers = await inquirer
+      .prompt([
+        {
+          name,
+          type: "checkbox",
+          choices: choices,
+        }
+      ])
+    const newFiles: Record<string, string> = {}
+    if(answers[name].length > 0) {
+      Object.keys(files).forEach(x => {
+        if(answers[name].includes(`[${x}]: ${files[x]}`)) {
+          newFiles[x] = files[x]
+        }
+      })
+      files = newFiles
+    }
+  }
+  
+
   for(let key in files){
     let file = files[key]
     const data = await getData(file)

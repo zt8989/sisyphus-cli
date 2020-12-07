@@ -26,6 +26,7 @@
   ],
   "dependencies": {
     "@types/ejs": "^2.6.0",
+    "@types/inquirer": "^7.3.1",
     "@types/lodash": "^4.14.165",
     "@types/node": "^10.12.10",
     "axios": "^0.18.1",
@@ -35,6 +36,7 @@
     "debug": "^4.1.0",
     "ejs": "^2.6.1",
     "express": "^4.17.1",
+    "inquirer": "^7.3.3",
     "json-beautify": "^1.1.1",
     "lodash": "^4.17.20",
     "ora": "^5.1.0",
