@@ -6,7 +6,6 @@ import ApiTool from './api';
 import path, { join } from 'path'
 import { promisify } from 'util'
 import ejs from 'ejs'
-import { exec } from 'child_process';
 import ora from 'ora';
 import { ConfigDefinition, Context } from './types';
 import { createApp } from './site';
@@ -165,13 +164,8 @@ async function importSwagger(cmdObj: any) {
     // await genIndex(project)
     await project.save()
   }
-  const prettier = path.resolve(process.cwd() ,'./node_modules/.bin/prettier')
-  if(fs.existsSync(prettier)){
-    exec(`${prettier} --write ${config.outDir}`, {
-      cwd: process.cwd()
-    })
-  }
-  console.log(`生成成功！`)
+  console.log(`生成成功！执行以下命令修复ts格式`)
+  console.log(`yarn prettier --write ${config.outDir}/**/*.ts`)
 }
 
 export default function(args: any) {
