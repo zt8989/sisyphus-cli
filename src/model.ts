@@ -31,6 +31,7 @@ export default class ModelTool extends BaseTool{
     const definitions = data.definitions
 
     // 记录已经创建的泛型类
+    console.log(this.context.imports)
     for(let modelName of this.context.imports) {
       modelName = this.getModelNameFromRef(modelName)
       if(definitions[modelName]){

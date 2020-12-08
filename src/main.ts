@@ -157,7 +157,7 @@ async function importSwagger(cmdObj: any) {
 
     await modelService.preMap(data)
 
-    await new ApiTool(context, project).genApis(data)
+    await new ApiTool(context, project, data).genApis()
 
     await modelService.genModels(data)
     // if(!config.onlyModel) {

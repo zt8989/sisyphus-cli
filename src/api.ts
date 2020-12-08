@@ -1,11 +1,11 @@
-import { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure, StructureKind } from 'ts-morph';
+import { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure, StructureKind, Project } from 'ts-morph';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
 import { join, parse, posix } from 'path';
 import * as changeCase from "change-case";
-import { RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest } from './types';
+import { Context, RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest } from './types';
 import ModelFile from './modelFile';
 const {getRequestConfigByOperationId } = require('swagger-faker')
 import beautify from "json-beautify"
@@ -14,6 +14,12 @@ const logger = require('debug')('api')
 const retainWord = ['delete']
 
 export default class ApiTool extends BaseTool {
+  private data: SwaggerJson
+
+  constructor(context: Context, project: Project, data: SwaggerJson) {
+    super(context, project)
+    this.data = data
+  }
 
   private mockObject: Record<string, any> = {}
 
@@ -55,7 +61,8 @@ export default class ApiTool extends BaseTool {
     return tag
   }
 
-  async genApis(data: SwaggerJson) {
+  async genApis() {
+    const data = this.data
     const project = this.project
     // this.createRequestFile(project)
     if(this.context.config.createTags) {
@@ -340,7 +347,7 @@ export default class ApiTool extends BaseTool {
             define.properties[x.name] = x as any
           }
         })
-        new ModelFile(this.context, this.project, typeName, define).create()
+        new ModelFile({ ...this.context, imports: [] }, this.project, typeName, define).create()
         result[name] = {
           kind: StructureKind.Parameter,
           name: name,
@@ -369,7 +376,10 @@ export default class ApiTool extends BaseTool {
     for (let param of parameters) {
       if (param.in === 'body') {
         if (param?.schema?.$ref) {
-          const type = this.checkAndAddImport(param.schema.$ref, imports)
+          let type: string = "any"
+          if(this.data.definitions[this.getModelNameFromRef(param.schema.$ref)]) {
+            type = this.checkAndAddImport(param.schema.$ref, imports)
+          }
           result[BODY_PARAMS] = {
             kind: StructureKind.Parameter,
             name: BODY_PARAMS,
