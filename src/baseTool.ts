@@ -2,7 +2,7 @@ import ModelNameParser, { ModelStruct } from "./utils/modelNameParser";
 import { CodeBlockWriter, ImportDeclarationStructure, Project, PropertyDeclarationStructure, StructureKind } from "ts-morph";
 import { scalarType } from "./utils/enum";
 import { Context, SwaggerParameter, SwaggerProperty } from "./types";
-const logger = require('debug')('api')
+import { mapValues } from "./utils/obj";
 
 const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
 
@@ -16,11 +16,7 @@ export default class BaseTool {
   }
 
   writeTypes(parameters: SwaggerParameter[], writer: CodeBlockWriter, optional: boolean = false) {
-    const hasQueryArray = (p: SwaggerParameter) => p.in === "query" && p.name.includes('[0].')
-    const hasQueryObject = (p: SwaggerParameter) => p.in === "query" && p.name.includes('.') && !p.name.includes('[0].')
-
-    const normalParameters = parameters.filter(p => !hasQueryArray(p) && !hasQueryObject(p))
-    normalParameters.forEach((p, i) => {
+    parameters.forEach((p, i) => {
       writer.write(i === 0 ? '' : ', ')
       if (Reflect.has(scalarType, p.type ?? "")) {
         let type 
@@ -48,45 +44,6 @@ export default class BaseTool {
         writer.write(`${p.name}${!p.required || optional ? '?':''}: any`)
       }
     })
-
-    {
-      const list: { [key: string]: SwaggerParameter[] } = {}
-      const seprator = '[0].'
-      const queryArray: SwaggerParameter[] = parameters.filter(hasQueryArray)
-      queryArray.forEach(q => {
-        const [name, filed] = q.name.split(seprator)
-        if (!list[name]) {
-          list[name] = []
-        }
-        list[name].push({ ...q, name: filed })
-      })
-      logger(list)
-      for (let i in list) {
-        writer.write(normalParameters.length === 0 ? '' : ', ')
-        writer.write(`${i}: {`)
-        this.writeTypes(list[i], writer)
-        writer.write(` }[]`)
-      }
-    }
-    {
-      const list: { [key: string]: SwaggerParameter[] } = {}
-      const seprator = '.'
-      const queryObject: SwaggerParameter[] = parameters.filter(hasQueryObject)
-      queryObject.forEach(q => {
-        const [name, filed] = q.name.split(seprator)
-        if (!list[name]) {
-          list[name] = []
-        }
-        list[name].push({ ...q, name: filed })
-      })
-      logger(list)
-      for (let i in list) {
-        writer.write(normalParameters.length === 0 ? '' : ', ')
-        writer.write(`${i}: {`)
-        this.writeTypes(list[i], writer)
-        writer.write(` }`)
-      }
-    }
   }
 
    /**
@@ -168,22 +125,7 @@ export default class BaseTool {
     }
   }
 
-  handleObjectProp = (prop: SwaggerProperty) => {
-    if(prop.type === 'object') {
-
-    }
-  }
-
-  handleArryaProp = (prop: SwaggerProperty) => {
-    if(prop.type === 'array') {
-      this.handleProps(prop.items)
-    }
-  }
-
-  handleProps = (prop: SwaggerProperty) => {
-    const list = [this.handleArryaProp, this.handleObjectProp]
-    list.forEach(handler => handler(prop))
-  }
+ 
 
   handleRef = (prop: SwaggerParameter) => {
     
@@ -216,12 +158,11 @@ export default class BaseTool {
       } else if (prop.type === 'object') {
         if (prop.properties) {
           // @ts-ignore
-          const params = Object.keys(prop.properties).map(x => {
+          const params = mapValues(prop.properties, (value, key) => {
             return {
-              // @ts-ignore
-              ...prop.properties[x],
-              name: x
-            };
+              ...value,
+              name: key
+            } as SwaggerParameter;
           });
           return (writer: CodeBlockWriter) => typeMapper(writer, () => {
               writer.write("{ ");

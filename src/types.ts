@@ -129,7 +129,7 @@ export type SwaggerArrayType = TypeCompose<{
 export type SwaggerObjectType = TypeCompose<{ 
   type: "object"
   additionalProperties?: SwaggerType
-  properties?: SwaggerProperty
+  properties?: Record<string, SwaggerProperty>
 }, SwaggerBaseType> & SwaggerBaseInfo
 
 export type SwaggerFileType = TypeCompose<{ 
@@ -157,7 +157,7 @@ export type SwaggerResponse = {
 
 export interface SwaggerDefinition {
     type: string
-    required: boolean
+    required: boolean | string[]
     properties: Record<string, SwaggerProperty>
     title: string
     description: string

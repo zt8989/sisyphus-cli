@@ -336,7 +336,7 @@ export default class ApiTool extends BaseTool {
     if (queryParameters.length > 0) {
       const name = 'queryParams'
 
-      if(queryParameters.length > 2) {
+      if(queryParameters.length > 2 || queryParameters.some(x => x.name.includes("."))) {
         const fileName = methodName + "Query"
         const typeName = fileName[0].toUpperCase() + fileName.slice(1)
         const define: SwaggerDefinition = {
@@ -511,43 +511,24 @@ export default class ApiTool extends BaseTool {
     return false
   }
 
-  getParameterDocs(name: string, parameters: SwaggerParameter[], docs: string[], isArray: boolean = false) {
-    const hasQueryArray = (p: SwaggerParameter) => p.in === "query" && p.name.includes('[0].')
-
-    const normalParameters = parameters.filter(p => !hasQueryArray(p))
-
+  getParameterDocs(name: string, parameters: SwaggerParameter[], docs: string[]) {
     const addDocs = (type: string, name: string, desc: string = '') => {
       docs.push(`@param {${type}} ${name} - ${desc}`)
     }
 
-    normalParameters.forEach((p) => {
+    parameters.forEach((p) => {
       if (Reflect.has(scalarType, p.type ?? "")) {
-        addDocs(Reflect.get(scalarType, p.type ?? ""), `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
+        addDocs(Reflect.get(scalarType, p.type ?? ""), `${name}.${p.name}`, p.description)
       } else if (p.type === 'array') {
         if (p.items) {
           if (Reflect.has(scalarType, p?.items?.type ?? "")) {
-            addDocs(`${Reflect.get(scalarType, p?.items?.type ?? "")}[]`, `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
+            addDocs(`${Reflect.get(scalarType, p?.items?.type ?? "")}[]`, `${name}.${p.name}`, p.description)
           }
         }
       } else {
-        addDocs('*', `${name}${isArray ? '[]' : ''}.${p.name}`, p.description)
+        addDocs('*', `${name}.${p.name}`, p.description)
       }
     })
-
-    const list: { [key: string]: SwaggerParameter[] } = {}
-    const seprator = '[0].'
-    const queryArray: SwaggerParameter[] = parameters.filter(hasQueryArray)
-    queryArray.forEach(q => {
-      const [name, filed] = q.name.split(seprator)
-      if (!list[name]) {
-        list[name] = []
-      }
-      list[name].push({ ...q, name: filed })
-    })
-    logger(list)
-    for (let i in list) {
-      this.getParameterDocs(name, list[i], docs, true)
-    }
   }
 
   createTags(data: SwaggerJson){
