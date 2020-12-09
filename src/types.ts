@@ -28,8 +28,8 @@ export interface ConfigDefinition {
   requestPath?: string
   onlyTags?: boolean
   dataKey?: string
-  mock?: boolean
   mockOverwrite?: (response: any) => any
+  formatUrl?: (baseUrl: string, url: string) => string
 }
 
 export interface SwaggerJson {
@@ -103,7 +103,13 @@ export interface SwaggerBaseType {
 
 export type TypeCompose<T, U> = T & Omit<U, keyof T>
 
-export type SwaggerStringType = TypeCompose<{ type: "string" }, SwaggerBaseType> & SwaggerBaseInfo
+export type SwaggerStringType = TypeCompose<{ type: "string", format?: "date-time" }, SwaggerBaseType> & SwaggerBaseInfo
+
+export type SwaggerIntegerType = TypeCompose<{ type: "integer", format: "int32" | "int64" }, SwaggerBaseType> & SwaggerBaseInfo
+
+export type SwaggerBooleanType = TypeCompose<{ type: "boolean" }, SwaggerBaseType> & SwaggerBaseInfo
+
+export type SwaggerNumberType = TypeCompose<{ type: "number" }, SwaggerBaseType> & SwaggerBaseInfo
 
 export type SwaggerBaseRefType = TypeCompose<{ 
   originalRef: string
@@ -134,7 +140,7 @@ export type SwaggerEnumType = TypeCompose<{
   enum: string[]
 }, SwaggerBaseType> & SwaggerBaseInfo
 
-export type SwaggerType = SwaggerBaseType & (SwaggerStringType | SwaggerRefType | SwaggerArrayType | SwaggerObjectType | SwaggerFileType | SwaggerEnumType)
+export type SwaggerType = SwaggerBaseType & (SwaggerStringType | SwaggerRefType | SwaggerArrayType | SwaggerObjectType | SwaggerFileType | SwaggerEnumType | SwaggerBooleanType | SwaggerIntegerType | SwaggerNumberType)
 
 export interface SwaggerRefDefinition {
   $ref: string
@@ -143,7 +149,7 @@ export interface SwaggerRefDefinition {
 
 export type SwaggerDefinitions = Record<string, SwaggerDefinition>
 
-export type SwaggerProperty = SwaggerStringType | Partial<SwaggerBaseRefType> | SwaggerArrayType | SwaggerObjectType | SwaggerFileType | SwaggerEnumType
+export type SwaggerProperty = SwaggerBooleanType | SwaggerIntegerType | SwaggerNumberType | SwaggerStringType | Partial<SwaggerBaseRefType> | SwaggerArrayType | SwaggerObjectType | SwaggerFileType | SwaggerEnumType
 
 export type SwaggerResponse = {
   schema: SwaggerBaseRefType

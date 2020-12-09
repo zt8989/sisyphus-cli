@@ -168,14 +168,67 @@ async function importSwagger(cmdObj: any) {
   console.log(`yarn prettier --write ${config.outDir}/**/*.ts`)
 }
 
+async function mockData(cmdObj: any){
+  const config = getConfig(cmdObj)
+  if (config === false) return
+
+  let files = typeof config.file === 'string' ? { default: config.file } : config.file
+
+  if(Object.keys(files).length > 1){
+    const choices = Object.keys(files).map(x => `[${x}]: ${files[x]}`)
+    const name = "select your import swagger, press <enter> to download all"
+    const answers = await inquirer
+      .prompt([
+        {
+          name,
+          type: "checkbox",
+          choices: choices,
+        }
+      ])
+    const newFiles: Record<string, string> = {}
+    if(answers[name].length > 0) {
+      Object.keys(files).forEach(x => {
+        if(answers[name].includes(`[${x}]: ${files[x]}`)) {
+          newFiles[x] = files[x]
+        }
+      })
+      files = newFiles
+    }
+  }
+  
+
+  for(let key in files){
+    let file = files[key]
+    const data = await getData(file)
+    if (data === false) return
+    const project = new Project()
+    const context: Context = {
+      config,
+      fileMap: {},
+      outDir: key === 'default' ? config.outDir : join(config.outDir, key),
+      generic: [],
+      imports: []
+    }
+    await new ApiTool(context, project, data).genMocks()
+    await project.save()
+    console.log(`生成成功！执行以下命令修复js格式`)
+    console.log(`yarn prettier --write ./mock/*.js`)
+  }
+}
+
 export default function(args: any) {
   if(args.init) {
     initProject(args)
     return
   }
 
-  if(args.mock){
+  if(args['mockServer']){
     createApp()
+    return
+  }
+
+  if(args['mockData']){
+    mockData(args)
     return
   }
 
@@ -185,5 +238,6 @@ export default function(args: any) {
 export {
   createApp,
   importSwagger,
-  initProject
+  initProject,
+  mockData
 }

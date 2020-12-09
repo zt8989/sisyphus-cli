@@ -7,7 +7,7 @@ import { join, parse, posix } from 'path';
 import * as changeCase from "change-case";
 import { Context, RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest } from './types';
 import ModelFile from './modelFile';
-const {getRequestConfigByOperationId } = require('swagger-faker')
+import Faker from './faker'
 import beautify from "json-beautify"
 const logger = require('debug')('api')
 
@@ -123,7 +123,7 @@ export default class ApiTool extends BaseTool {
           });
           const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
           const isDownload = this.isDownloadApi(methods[method])
-          const fullUrl = posix.join(data.basePath ,url)
+          const fullUrl = this.getFullUrl(data.basePath, url)
           // @ts-ignore
           urlsEnum.members.push({
             name: methodName,
@@ -149,11 +149,6 @@ export default class ApiTool extends BaseTool {
             docs: docs.length > 0 ? [docs.join('\n')] : [],
             isExported: true,
           })
-
-          if(this.context.config.mock) {
-            const mockData = this.getMockData(data, methods[method].operationId)
-            this.mockObject[`${method.toUpperCase()} ${fullUrl}`] = mockData
-          }
         }
       }
 
@@ -164,23 +159,55 @@ export default class ApiTool extends BaseTool {
       project.createSourceFile(path, {
         statements: [...imports, urlsEnum, ...functions]
       })
-      if(this.context.config.mock) {
-        const mockPath = join(process.cwd(), 'mock', `${tagName}.js`)
-        if (fs.existsSync(mockPath)) {
-          fs.unlinkSync(mockPath)
+    }
+  }
+
+  getFullUrl(baseUrl: string, url: string){
+    if(this.context.config.formatUrl) {
+      return this.context.config.formatUrl(baseUrl, url)
+    }
+    return posix.join(baseUrl ,url)
+  }
+
+  async genMocks(){
+    const data = this.data
+    const project = this.project
+
+    let tags = data.tags
+    if(this.context.config.onlyTags) {
+      tags = tags.filter(x => !!(this.context.config.tags || {})[x.name])
+    }
+    for (let tag of tags) {
+      const tagName = this.getTag(tag.name)
+
+      const paths = data.paths
+   
+      for (let url in paths) {
+        const methods = paths[url]
+        for (let method in methods) {
+          const fullUrl = this.getFullUrl(data.basePath, url)
+
+          const mockData = this.getMockData(methods[method], data.definitions)
+          this.mockObject[`${method.toUpperCase()} ${fullUrl}`] = mockData
         }
-        project.createSourceFile(mockPath,(writer: CodeBlockWriter) => {
-          writer.write(`const mockData = ${beautify(this.mockObject, null as any, 2, 100)}`)
-          writer.writeLine("")
-          writer.writeLine("module.exports = {" )
-          Object.keys(this.mockObject).forEach(url => {
-            writer.writeLine(`  "${url}": (req, res) => {`)
-            writer.write(`    res.json(mockData['${url}'])`)
-            writer.writeLine(`  },`)
-          })
-          writer.writeLine("}")
-        })
       }
+      
+      const mockPath = join(process.cwd(), 'mock', `${tagName}.js`)
+      if (fs.existsSync(mockPath)) {
+        fs.unlinkSync(mockPath)
+      }
+      project.createSourceFile(mockPath,(writer: CodeBlockWriter) => {
+        writer.writeLine(`const mockjs = require("mockjs")`)
+        writer.write(`const mockData = ${beautify(this.mockObject, null as any, 2, 100)}`)
+        writer.writeLine("")
+        writer.writeLine("module.exports = {" )
+        Object.keys(this.mockObject).forEach(url => {
+          writer.writeLine(`  "${url}": (req, res) => {`)
+          writer.write(`    res.json(mockjs.mock(mockData['${url}']))`)
+          writer.writeLine(`  },`)
+        })
+        writer.writeLine("}")
+      })
     }
   }
 
@@ -191,13 +218,24 @@ export default class ApiTool extends BaseTool {
     return Object.keys(parameters).map(x => parameters[x])
   }
 
-  getMockData(swagger: SwaggerJson, operationId: string){
-    const request = getRequestConfigByOperationId(swagger as any, operationId);
-    const response = request?.response || {}
-    if(this.context.config.mockOverwrite && typeof this.context.config.mockOverwrite === 'function'){
-      return this.context.config.mockOverwrite(request)
+  getMockData(path: SwaggerRequest, definitions: SwaggerDefinitions){
+    const faker = new Faker(definitions)
+    if (path.responses[200]) {
+      let schema = path.responses[200].schema
+      if (schema && schema.$ref) {
+        let ref = schema.$ref
+        const define = definitions[ref.slice('#/definitions/'.length)]
+        faker.fake(ref, define)
+      } else {
+        // other
+      }
     }
-    return response
+    if(this.context.config.mockOverwrite && typeof this.context.config.mockOverwrite === 'function'){
+      return this.context.config.mockOverwrite({
+        response: faker.getObj()
+      })
+    }
+    return faker.getObj()
   }
 
   /**
