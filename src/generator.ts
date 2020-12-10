@@ -8,7 +8,23 @@ type EventType = "object" | "object:start" | "object:end"
 
 type EventListener = (prop: SwaggerProperty) => void
 
+type GeneratorStack = {
+  continuation: number
+  node: SwaggerProperty
+}
+
 export default class Generator {
+
+  private $stack: GeneratorStack[] = []
+
+  private $call = (prop: SwaggerProperty) => this.$stack.push({
+    continuation: 0,
+    node: prop,
+  })
+
+  private $current = () => this.$stack[this.$stack.length - 1]
+
+  private $return = () => this.$stack.pop()
 
   // @ts-ignore
   private events: Record<EventType, EventListener[]> = {}
@@ -29,62 +45,139 @@ export default class Generator {
     })
   }
 
-  handleObjectProp = (prop: SwaggerProperty) => {
+  handleObjectProp = (prop: SwaggerProperty, continuation: number) => {
     if(prop.type === 'object') {
-      this.emit("object:start", prop)
-      this.emit("object", prop)
-
-      if(prop.additionalProperties){
-        this.handleProp(prop.additionalProperties)
+      switch(continuation) {
+        case 0: {
+          this.emit("object:start", prop);
+          break;
+        }
+        case 1: {
+          this.emit("object", prop)
+          if(prop.additionalProperties){
+            this.$call(prop.additionalProperties)
+          }
+          if(prop.properties){
+            forEachValues(prop.properties, (value) => this.$call(value))
+          }
+          break
+        }
+        case 2: {
+          this.emit("object:end", prop)
+          break
+        }
+        case 3: {
+          break
+        }
       }
-      if(prop.properties){
-        forEachValues(prop.properties, (value) => this.handleProp(value))
-      }
-      this.emit("object:end", prop)
     }
   }
 
 
-  handleArrayProp = (prop: SwaggerProperty) => {
+  handleArrayProp = (prop: SwaggerProperty, continuation: number) => {
     if(prop.type === 'array') {
-      this.emit("array:start", prop)
-      this.emit("array", prop)
-      this.handleProp(prop.items)
-      this.emit("array:end", prop)
+      const current = this.$current();
+      switch(current.continuation) {
+        case 0: {
+          this.emit("array:start", prop)
+          break;
+        }
+        case 1: {
+          this.emit("array", prop)
+          this.$call(prop.items)
+          break
+        }
+        case 2: {
+          this.emit("array:end", prop)
+          break
+        }
+      }
     }
   }
 
-  handleProp = (prop: SwaggerProperty) => {
+  handleProp2 = (prop: SwaggerProperty) => {
+    this.$call(prop)
+    while(this.$stack.length > 0) {
+      const current = this.$current();
+      const { continuation, node } = current;
+
+      switch (continuation) {
+        case 0: {
+          this.handleProp(node, continuation)
+          current.continuation = 1
+          break
+        }
+        case 1: {
+          this.handleProp(node, continuation)
+          current.continuation = 2
+          break
+        }
+        case 2: {
+          this.handleProp(node, continuation)
+          current.continuation = 3
+          break
+        }
+        case 3: {
+          this.$return()
+          break
+        }
+      }
+    }
+  }
+
+  handleProp = (prop: SwaggerProperty, continuation: number) => {
     switch(prop.type) {
       case "array":
-        this.handleArrayProp(prop)
+        this.handleArrayProp(prop, continuation)
         break
       case "object":
-        this.handleObjectProp(prop)
+        this.handleObjectProp(prop, continuation)
         break
       case 'string':
       case 'boolean':
       case 'integer':
       case 'number':
-        this.handleScalar(prop)
+        this.handleScalar(prop, continuation)
         break
       case undefined:
-        this.handleRef(prop)
+        this.handleRef(prop, continuation)
         break
       default:
         throw new Error("unknow type" + beautify(prop, null as any, 2, 100))
     }
   }
 
-  handleRef = (prop: SwaggerProperty) => {
-    this.emit("ref:start", prop)
-    this.emit("ref", prop)
-    this.emit("ref:end", prop)
+  handleRef = (prop: SwaggerProperty, continuation: number) => {
+    switch(continuation) {
+      case 0: {
+        this.emit("ref:start", prop)
+        break;
+      }
+      case 1: {
+        this.emit("ref", prop)
+        break
+      }
+      case 2: {
+        this.emit("ref:end", prop)
+        break
+      }
+    }
   }
 
-  handleScalar = (prop: SwaggerProperty) => {
-    this.emit("scalar:start", prop)
-    this.emit("scalar", prop)
-    this.emit("scalar:end", prop)
+  handleScalar = (prop: SwaggerProperty, continuation: number) => {
+    switch(continuation) {
+      case 0: {
+        this.emit("scalar:start", prop)
+        break;
+      }
+      case 1: {
+        this.emit("scalar", prop)
+        break
+      }
+      case 2: {
+        this.emit("scalar:end", prop)
+        break
+      }
+    }
   }
 }

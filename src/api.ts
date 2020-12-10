@@ -9,7 +9,6 @@ import { Context, RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJs
 import ModelFile from './modelFile';
 import Faker from './faker'
 import beautify from "json-beautify"
-const logger = require('debug')('api')
 
 const retainWord = ['delete']
 
@@ -129,7 +128,6 @@ export default class ApiTool extends BaseTool {
             name: methodName,
             value: fullUrl
           })
-          logger('docs', docs)
           functions.push({
             kind: StructureKind.Function,
             name: methodName,
@@ -545,7 +543,6 @@ export default class ApiTool extends BaseTool {
   }
 
   getReturn(path: SwaggerRequest, imports: ImportDeclarationStructure[], definitions: SwaggerDefinitions) {
-    logger('getReturn', path)
     if (path.responses[200]) {
       let schema = path.responses[200].schema
       if (schema && schema.$ref) {
@@ -629,7 +626,6 @@ export default class ApiTool extends BaseTool {
         }
       }
     }
-    logger(imports)
     return properties
   }
 

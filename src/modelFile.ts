@@ -141,7 +141,7 @@ export default class ModelFile extends BaseTool {
             }
           })
   
-          generator.handleProp(prop)
+          generator.handleProp2(prop)
           
           return (writer: CodeBlockWriter) => {
             funcs.forEach(func => func.call(null, writer))
@@ -152,7 +152,7 @@ export default class ModelFile extends BaseTool {
 
         properties.push({
           kind: StructureKind.PropertySignature,
-          name: propName + (requiredList.includes(propName) ? '' : '?'),
+          name: propName + (requiredList.includes(propName) || prop.required ? '' : '?'),
           type,
           docs: prop.description ? [prop.description] : []
         })
