@@ -81,8 +81,15 @@ export default class Faker {
       default:
         throw new Error("unkonw type " + prop.type)
     }
-    if(name.toString().toLowerCase().endsWith("id")) {
+    const lName = name.toString().toLowerCase()
+    if(lName.endsWith("id") || lName.endsWith("number") || lName.endsWith("no")) {
       currentRef[name] = "@id"
+    }
+    if(lName.endsWith("email")) {
+      currentRef[name] = "@email"
+    }
+    if(lName.endsWith("city")) {
+      currentRef[name] = "@city"
     }
   }
 }

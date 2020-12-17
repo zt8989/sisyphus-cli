@@ -107,11 +107,6 @@ export default class ApiTool extends BaseTool {
           if (methods[method].description) {
             docs.push(methods[method].description)
           }
-          docs.push(`${method.toUpperCase()} ${posix.join(data.basePath ,url)}`)
-
-          if(methods[method]?.deprecated === true) {
-            docs.push(`@deprecated`)
-          }
        
           const methodName = this.handleOperationId({
             swaggerRequest: methods[method],
@@ -120,14 +115,24 @@ export default class ApiTool extends BaseTool {
             method,
             parsedPath: parse(url)
           });
-          const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
-          const isDownload = this.isDownloadApi(methods[method])
+
           const fullUrl = this.getFullUrl(data.basePath, url)
           // @ts-ignore
           urlsEnum.members.push({
             name: methodName,
-            value: fullUrl
+            value: fullUrl,
+            docs: [...docs]
           })
+
+          docs.push(`${method.toUpperCase()} ${posix.join(data.basePath ,url)}`)
+
+          if(methods[method]?.deprecated === true) {
+            docs.push(`@deprecated`)
+          }
+
+          const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
+          const isDownload = this.isDownloadApi(methods[method])
+
           functions.push({
             kind: StructureKind.Function,
             name: methodName,
