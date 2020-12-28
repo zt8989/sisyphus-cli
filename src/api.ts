@@ -91,6 +91,7 @@ export default class ApiTool extends BaseTool {
 
       const paths = data.paths
       const functions: FunctionDeclarationStructure[] = []
+      
       const imports: ImportDeclarationStructure[] = [...defaultImports]
    
       for (let url in paths) {
@@ -135,7 +136,7 @@ export default class ApiTool extends BaseTool {
 
           functions.push({
             kind: StructureKind.Function,
-            name: methodName,
+            name: methodName + `<T = ${this.getReturnType(methods[method], imports, data.definitions)}>`,
             parameters: this.handleFunctionParameters(parameters),
             returnType: this.getReturn(methods[method], imports, data.definitions),
             statements: writer => {
@@ -188,6 +189,9 @@ export default class ApiTool extends BaseTool {
       for (let url in paths) {
         const methods = paths[url]
         for (let method in methods) {
+          if(methods[method].tags.indexOf(tag.name) === -1){
+            break
+          }
           const fullUrl = this.getFullUrl(data.basePath, url)
 
           const mockData = this.getMockData(methods[method], data.definitions)
@@ -548,6 +552,10 @@ export default class ApiTool extends BaseTool {
   }
 
   getReturn(path: SwaggerRequest, imports: ImportDeclarationStructure[], definitions: SwaggerDefinitions) {
+    return "Promise<T>"
+  }
+
+  getReturnType(path: SwaggerRequest, imports: ImportDeclarationStructure[], definitions: SwaggerDefinitions) {
     if (path.responses[200]) {
       let schema = path.responses[200].schema
       if (schema && schema.$ref) {
@@ -557,17 +565,17 @@ export default class ApiTool extends BaseTool {
           let schema = define.properties[this.context.config.dataKey]
           if(schema && schema.$ref) {
             const type = this.checkAndAddImport(schema.$ref, imports, [])
-            return `Promise<${type}>`
+            return type
           }
         } else {
           const type = this.checkAndAddImport(schema.$ref, imports, [])
-          return `Promise<${type}>`
+          return type
         }
       } else {
         // other
       }
     }
-    return "Promise<any>"
+    return 'any'
   }
 
   getProperties(definition: SwaggerDefinition, imports: ImportDeclarationStructure[]) {
