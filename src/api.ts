@@ -5,7 +5,7 @@ import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
 import { join, parse, posix } from 'path';
 import * as changeCase from "change-case";
-import { Context, RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest } from './types';
+import { Context, RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest, SwaggerTag } from './types';
 import ModelFile from './modelFile';
 import Faker from './faker'
 import beautify from "json-beautify"
@@ -60,7 +60,7 @@ export default class ApiTool extends BaseTool {
     return tag
   }
 
-  async genApis() {
+  async genApis(tags: SwaggerTag[]) {
     const data = this.data
     const project = this.project
     // this.createRequestFile(project)
@@ -74,10 +74,6 @@ export default class ApiTool extends BaseTool {
       namedImports: ['bindUrl', 'request']
     }]
 
-    let tags = data.tags
-    if(this.context.config.onlyTags) {
-      tags = tags.filter(x => !!(this.context.config.tags || {})[x.name])
-    }
     for (let tag of tags) {
       const tagName = this.getTag(tag.name)
 
@@ -173,14 +169,10 @@ export default class ApiTool extends BaseTool {
     return posix.join(baseUrl ,url)
   }
 
-  async genMocks(){
+  async genMocks(tags: SwaggerTag[]){
     const data = this.data
     const project = this.project
 
-    let tags = data.tags
-    if(this.context.config.onlyTags) {
-      tags = tags.filter(x => !!(this.context.config.tags || {})[x.name])
-    }
     for (let tag of tags) {
       const tagName = this.getTag(tag.name)
 
@@ -566,6 +558,10 @@ export default class ApiTool extends BaseTool {
           if(schema && schema.$ref) {
             const type = this.checkAndAddImport(schema.$ref, imports, [])
             return type
+          }
+          if (schema && schema.type === 'array' && schema.items.$ref) {
+            const type = this.checkAndAddImport(schema.items.$ref, imports, [])
+            return type + '[]'
           }
         } else {
           const type = this.checkAndAddImport(schema.$ref, imports, [])

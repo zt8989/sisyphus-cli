@@ -7,7 +7,7 @@ import path, { join } from 'path'
 import { promisify } from 'util'
 import ejs from 'ejs'
 import ora from 'ora';
-import { ConfigDefinition, Context } from './types';
+import { ConfigDefinition, Context, SwaggerJson, SwaggerTag } from './types';
 import { createApp } from './site';
 import inquirer from 'inquirer'
 
@@ -141,7 +141,7 @@ async function importSwagger(cmdObj: any) {
 
   for(let key in files){
     let file = files[key]
-    const data = await getData(file)
+    const data: SwaggerJson | false = await getData(file)
     if (data === false) return
     const project = new Project()
     const context: Context = {
@@ -156,7 +156,35 @@ async function importSwagger(cmdObj: any) {
 
     await modelService.preMap(data)
 
-    await new ApiTool(context, project, data).genApis()
+    let tags = data.tags
+    if(config.onlyTags) {
+      tags = tags.filter(x => !!(config.tags || {})[x.name])
+    }
+
+    if(tags.length > 1){
+      const choices = tags.map(x => x.name)
+      const name = "select your import tag, press <enter> to download all"
+      const answers = await inquirer
+        .prompt([
+          {
+            name,
+            type: "checkbox",
+            choices: choices,
+          }
+        ])
+      if(answers[name].length > 0) {
+        const newTags: SwaggerTag[] = []
+
+        tags.forEach(x => {
+          if(answers[name].includes(x.name)) {
+            newTags.push(x)
+          }
+        })
+        tags = newTags
+      }
+    }
+
+    await new ApiTool(context, project, data).genApis(tags)
 
     await modelService.genModels(data)
     // if(!config.onlyModel) {
@@ -199,7 +227,7 @@ async function mockData(cmdObj: any){
 
   for(let key in files){
     let file = files[key]
-    const data = await getData(file)
+    const data: SwaggerJson | false = await getData(file)
     if (data === false) return
     const project = new Project()
     const context: Context = {
@@ -209,7 +237,36 @@ async function mockData(cmdObj: any){
       generic: [],
       imports: []
     }
-    await new ApiTool(context, project, data).genMocks()
+
+    let tags = data.tags
+    if(config.onlyTags) {
+      tags = tags.filter(x => !!(config.tags || {})[x.name])
+    }
+
+    if(tags.length > 1){
+      const choices = tags.map(x => x.name)
+      const name = "select your import tag, press <enter> to download all"
+      const answers = await inquirer
+        .prompt([
+          {
+            name,
+            type: "checkbox",
+            choices: choices,
+          }
+        ])
+      if(answers[name].length > 0) {
+        const newTags: SwaggerTag[] = []
+
+        tags.forEach(x => {
+          if(answers[name].includes(x.name)) {
+            newTags.push(x)
+          }
+        })
+        tags = newTags
+      }
+    }
+
+    await new ApiTool(context, project, data).genMocks(tags)
     await project.save()
     console.log(`生成成功！执行以下命令修复js格式`)
     console.log(`yarn prettier --write ./mock/*.js`)
