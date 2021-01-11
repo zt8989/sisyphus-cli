@@ -10,6 +10,8 @@ import ora from 'ora';
 import { ConfigDefinition, Context, SwaggerJson, SwaggerTag } from './types';
 import { createApp } from './site';
 import inquirer from 'inquirer'
+inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'));
+import { match } from 'pinyin-match'
 
 // @ts-ignore
 async function genIndex() {
@@ -118,11 +120,13 @@ async function importSwagger(cmdObj: any) {
 
   if(Object.keys(files).length > 1){
     const choices = Object.keys(files).map(x => `[${x}]: ${files[x]}`)
-    const name = "select your import swagger, press <enter> to download all"
+    const name = "source"
+    const message = "select your import swagger, press <enter> to download all"
     const answers = await inquirer
       .prompt([
         {
           name,
+          message,
           type: "checkbox",
           choices: choices,
         }
@@ -157,34 +161,31 @@ async function importSwagger(cmdObj: any) {
     await modelService.preMap(data)
 
     let tags = data.tags
-    if(config.onlyTags) {
-      tags = tags.filter(x => !!(config.tags || {})[x.name])
-    }
 
-    if(tags.length > 1){
-      const choices = tags.map(x => x.name)
-      const name = "select your import tag, press <enter> to download all"
-      const answers = await inquirer
-        .prompt([
-          {
-            name,
-            type: "checkbox",
-            choices: choices,
-          }
-        ])
-      if(answers[name].length > 0) {
-        const newTags: SwaggerTag[] = []
-
-        tags.forEach(x => {
-          if(answers[name].includes(x.name)) {
-            newTags.push(x)
-          }
-        })
-        tags = newTags
+    const choices = tags.map(x => {
+      const map = (config.tags || {})[x.name]
+      return {
+        name: x.name + (map ? `(${map})` : ""),
+        value: x.name
       }
-    }
+    })
+    const name = "tags"
+    const message = "search the controller you want to generate."
+    const answers = await inquirer
+      .prompt([
+        {
+          name,
+          message,
+          type: 'checkbox-plus',
+          searchable: true,
+          source: async (_:any, input: string) => {
+            const i = String.prototype.trim.call(input || "")
+            return i ? choices.filter(x => match(x.name, i)) : choices
+          },
+        }
+      ])
 
-    await new ApiTool(context, project, data).genApis(tags)
+    await new ApiTool(context, project, data).genApis(answers[name])
 
     await modelService.genModels(data)
     // if(!config.onlyModel) {

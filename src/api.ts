@@ -60,7 +60,7 @@ export default class ApiTool extends BaseTool {
     return tag
   }
 
-  async genApis(tags: SwaggerTag[]) {
+  async genApis(tags: string[]) {
     const data = this.data
     const project = this.project
     // this.createRequestFile(project)
@@ -75,7 +75,7 @@ export default class ApiTool extends BaseTool {
     }]
 
     for (let tag of tags) {
-      const tagName = this.getTag(tag.name)
+      const tagName = this.getTag(tag)
 
       const URLS_ENUM_NAME = tagName + "_URLS"
       const urlsEnum: EnumDeclarationStructure = {
@@ -93,7 +93,7 @@ export default class ApiTool extends BaseTool {
       for (let url in paths) {
         const methods = paths[url]
         for (let method in methods) {
-          if(methods[method].tags.indexOf(tag.name) === -1){
+          if(methods[method].tags.indexOf(tag) === -1){
             break
           }
           const docs = []
