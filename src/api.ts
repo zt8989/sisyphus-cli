@@ -129,10 +129,15 @@ export default class ApiTool extends BaseTool {
 
           const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
           const isDownload = this.isDownloadApi(methods[method])
-
+          
+          const returnType = this.getReturnType(methods[method], imports, data.definitions)
           functions.push({
             kind: StructureKind.Function,
-            name: methodName + `<T = ${this.getReturnType(methods[method], imports, data.definitions)}>`,
+            name: methodName
+              +'<T = ' 
+              + returnType
+              + ((returnType !== 'any' && this.context.config.responseNullable) ? ' | null' : '')
+              + '>',
             parameters: this.handleFunctionParameters(parameters),
             returnType: this.getReturn(methods[method], imports, data.definitions),
             statements: writer => {
@@ -353,14 +358,20 @@ export default class ApiTool extends BaseTool {
             const childName = splitNames[1]
             if(define.properties[name]) {
               // @ts-ignore
-              define.properties[name]["items"]["properties"][childName] = x
+              define.properties[name]["items"]["properties"][childName] = {
+                ...x,
+                name: childName
+              }
             } else {
               define.properties[name] = {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
-                    [childName]: x
+                    [childName]: {
+                      ...x,
+                      name: childName
+                    }
                   }
                 }
               } as any
@@ -371,12 +382,18 @@ export default class ApiTool extends BaseTool {
             const childName = splitNames[1]
             if(define.properties[name]) {
               // @ts-ignore
-              define.properties[name]["properties"][childName] = define
+              define.properties[name]["properties"][childName] = {
+                ...x,
+                name: childName
+              }
             } else {
               define.properties[name] = {
                 type: "object",
                 properties: {
-                  [childName]: define
+                  [childName]: { 
+                    ...x,
+                    name: childName
+                  }
                 }
               } as any
             } 

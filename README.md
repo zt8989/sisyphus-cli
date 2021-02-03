@@ -57,6 +57,7 @@ module.exports = {
       "success": true
     })
   }
+  responseNullable: true
 }
 ```
 
@@ -153,6 +154,8 @@ export { request, bindUrl };
   }
 ```
 
+# responseNullable
+可选，boolean， 响应为 T | null
 # QA
 
 Q: 我遇到了中文的model怎么办？

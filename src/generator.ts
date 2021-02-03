@@ -2,11 +2,11 @@ import beautify from "json-beautify"
 import { SwaggerArrayType, SwaggerBaseRefType, SwaggerObjectType, SwaggerProperty } from "./types"
 import { forEachValues } from "./utils/obj"
 
-type EventType = "object" | "object:start" | "object:end" 
+type EventType = "*:start" | "*:end" | "object" | "object:start" | "object:end" 
   | 'array' | "array:start" | "array:end" | 'scalar' | 'scalar:start' | 'scalar:end'
   | 'ref' | 'ref:start' | 'ref:end'
 
-type EventListener = (prop: SwaggerProperty) => void
+type EventListener = (prop: SwaggerProperty, deep?: number) => void
 
 type GeneratorStack = {
   continuation: number
@@ -29,6 +29,7 @@ export default class Generator {
   // @ts-ignore
   private events: Record<EventType, EventListener[]> = {}
 
+  addEventListener(type: "*:start" | "*:end" , listener: (prop: SwaggerObjectType, deep: number) => void): void
   addEventListener(type: "object" | "object:start" | "object:end" , listener: (prop: SwaggerObjectType) => void): void
   addEventListener(type: 'array' | "array:start" | "array:end" , listener: (prop: SwaggerArrayType) => void): void
   addEventListener(type: 'scalar' | 'scalar:start' | 'scalar:end' , listener: (prop: SwaggerProperty) => void): void
@@ -39,9 +40,9 @@ export default class Generator {
     this.events[type].push(listener)
   }
 
-  emit = (type: EventType, prop: SwaggerProperty) => {
+  emit = (type: EventType, prop: SwaggerProperty, deep?: number) => {
     (this.events[type] || []).forEach(x => {
-      x.call(null, prop)
+      x.call(null, prop, deep)
     })
   }
 
@@ -49,6 +50,7 @@ export default class Generator {
     if(prop.type === 'object') {
       switch(continuation) {
         case 0: {
+          this.emit("*:start", prop, this.$stack.length)
           this.emit("object:start", prop);
           break;
         }
@@ -64,6 +66,7 @@ export default class Generator {
         }
         case 2: {
           this.emit("object:end", prop)
+          this.emit("*:end", prop, this.$stack.length)
           break
         }
         case 3: {
@@ -79,6 +82,7 @@ export default class Generator {
       const current = this.$current();
       switch(current.continuation) {
         case 0: {
+          this.emit("*:start", prop, this.$stack.length)
           this.emit("array:start", prop)
           break;
         }
@@ -89,6 +93,7 @@ export default class Generator {
         }
         case 2: {
           this.emit("array:end", prop)
+          this.emit("*:end", prop, this.$stack.length)
           break
         }
       }
@@ -137,6 +142,7 @@ export default class Generator {
       case 'boolean':
       case 'integer':
       case 'number':
+      case 'ref':
         this.handleScalar(prop, continuation)
         break
       case undefined:
@@ -150,6 +156,7 @@ export default class Generator {
   handleRef = (prop: SwaggerProperty, continuation: number) => {
     switch(continuation) {
       case 0: {
+        this.emit("*:start", prop, this.$stack.length)
         this.emit("ref:start", prop)
         break;
       }
@@ -159,6 +166,7 @@ export default class Generator {
       }
       case 2: {
         this.emit("ref:end", prop)
+        this.emit("*:end", prop, this.$stack.length)
         break
       }
     }
@@ -167,15 +175,17 @@ export default class Generator {
   handleScalar = (prop: SwaggerProperty, continuation: number) => {
     switch(continuation) {
       case 0: {
+        this.emit("*:start", prop, this.$stack.length)
         this.emit("scalar:start", prop)
         break;
       }
       case 1: {
-        this.emit("scalar", prop)
+        this.emit("scalar", prop, this.$stack.length)
         break
       }
       case 2: {
         this.emit("scalar:end", prop)
+        this.emit("*:end", prop, this.$stack.length)
         break
       }
     }

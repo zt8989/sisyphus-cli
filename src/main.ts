@@ -11,7 +11,7 @@ import { ConfigDefinition, Context, SwaggerJson, SwaggerTag } from './types';
 import { createApp } from './site';
 import inquirer from 'inquirer'
 inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'));
-import { match } from 'pinyin-match'
+import pinyin from 'pinyin-match'
 
 // @ts-ignore
 async function genIndex() {
@@ -90,6 +90,10 @@ function getConfig(cmdObj: any) {
 
   if(!configJson.requestPath) {
     configJson.requestPath = typeof configJson.file === 'string' ? "./request" : "../request"
+  }
+
+  if(configJson.responseNullable === undefined) {
+    configJson.responseNullable = false
   }
    
   for(let file of files){
@@ -180,7 +184,7 @@ async function importSwagger(cmdObj: any) {
           searchable: true,
           source: async (_:any, input: string) => {
             const i = String.prototype.trim.call(input || "")
-            return i ? choices.filter(x => match(x.name, i)) : choices
+            return i ? choices.filter(x => pinyin.match(x.name, i)) : choices
           },
         }
       ])

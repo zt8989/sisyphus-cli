@@ -95,6 +95,16 @@ export default class ModelFile extends BaseTool {
         const thunk = () => {
           const funcs: Function[] = []
           const generator = new Generator()
+          generator.addEventListener("*:start", (prop, deep) => {
+            if(deep > 1 && prop.name) {
+              funcs.push((writer: CodeBlockWriter) => writer.write(prop.name + ": "))
+            }
+          })
+          generator.addEventListener("*:end", (prop, deep) => {
+            if(deep > 2 && prop.name) {
+              funcs.push((writer: CodeBlockWriter) => writer.write(", "))
+            }
+          })
           generator.addEventListener("object:start", (prop) => {
             if(prop.properties) {
               funcs.push((writer: CodeBlockWriter) => writer.write("{ "));
@@ -119,7 +129,7 @@ export default class ModelFile extends BaseTool {
           })
           generator.addEventListener("scalar", (prop) => {
             if(prop.type){
-              let type: string;
+              let type: string
               if (prop.type === scalarType.string && Array.isArray(prop.enum)) {
                 type = prop.enum.map(x => `'${x}'`).join(' | ');
               } else {

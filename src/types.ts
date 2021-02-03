@@ -30,6 +30,7 @@ export interface ConfigDefinition {
   dataKey?: string
   mockOverwrite?: (response: any) => any
   formatUrl?: (baseUrl: string, url: string) => string
+  responseNullable?: boolean
 }
 
 export interface SwaggerJson {
@@ -96,7 +97,6 @@ export interface SwaggerBaseType {
   type?: undefined
   schema?: SwaggerRefType["schema"]
   enum?: string[]
-  additionalProperties?: SwaggerType
   $ref?: string
   items?: SwaggerArrayType["items"]
 }
@@ -110,6 +110,8 @@ export type SwaggerIntegerType = TypeCompose<{ type: "integer", format: "int32" 
 export type SwaggerBooleanType = TypeCompose<{ type: "boolean" }, SwaggerBaseType> & SwaggerBaseInfo
 
 export type SwaggerNumberType = TypeCompose<{ type: "number" }, SwaggerBaseType> & SwaggerBaseInfo
+
+export type SwaggerQueryRefType = TypeCompose<{ type: "ref" }, SwaggerBaseType> & SwaggerBaseInfo
 
 export type SwaggerBaseRefType = TypeCompose<{ 
   originalRef: string
@@ -149,7 +151,7 @@ export interface SwaggerRefDefinition {
 
 export type SwaggerDefinitions = Record<string, SwaggerDefinition>
 
-export type SwaggerProperty = SwaggerBooleanType | SwaggerIntegerType | SwaggerNumberType | SwaggerStringType | Partial<SwaggerBaseRefType> | SwaggerArrayType | SwaggerObjectType | SwaggerFileType | SwaggerEnumType
+export type SwaggerProperty = SwaggerQueryRefType | SwaggerBooleanType | SwaggerIntegerType | SwaggerNumberType | SwaggerStringType | Partial<SwaggerBaseRefType> | SwaggerArrayType | SwaggerObjectType | SwaggerFileType | SwaggerEnumType
 
 export type SwaggerResponse = {
   schema: SwaggerBaseRefType
