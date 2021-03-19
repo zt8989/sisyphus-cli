@@ -166,15 +166,19 @@ async function importSwagger(cmdObj: any) {
 
     let tags = data.tags
 
-    const choices = tags.map(x => {
+    const tool =  new ApiTool(context, project, data)
+
+    const choices = tool.genUrls(tags.map(x => {
       const map = (config.tags || {})[x.name]
       return {
         name: x.name + (map ? `(${map})` : ""),
-        value: x.name
+        value: x.name,
       }
-    })
+    }))
+
     const name = "tags"
     const message = "search the controller you want to generate."
+
     const answers = await inquirer
       .prompt([
         {
@@ -184,12 +188,14 @@ async function importSwagger(cmdObj: any) {
           searchable: true,
           source: async (_:any, input: string) => {
             const i = String.prototype.trim.call(input || "")
-            return i ? choices.filter(x => pinyin.match(x.name, i)) : choices
+            return i ? choices.filter(x => {
+              return pinyin.match(x.name, i) || x.urls.some(u => u.includes(i)) 
+            }) : choices
           },
         }
       ])
 
-    await new ApiTool(context, project, data).genApis(answers[name])
+    await tool.genApis(answers[name])
 
     await modelService.genModels(data)
     // if(!config.onlyModel) {

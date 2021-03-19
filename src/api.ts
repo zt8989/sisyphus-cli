@@ -60,6 +60,26 @@ export default class ApiTool extends BaseTool {
     return tag
   }
 
+  genUrls(tags: { name:string, value: string }[]) {
+    const data = this.data
+
+    return tags.map(x => {
+      const paths = data.paths
+      let urls = []
+      for (let url in paths) {
+        const methods = paths[url]
+        for (let method in methods) {
+          const request = methods[method]
+          if(request.tags.includes(x.value)) {
+            const fullUrl = this.getFullUrl(data.basePath, url)
+            urls.push(fullUrl)
+          }
+        }
+      }
+      return { ...x, urls }
+    })
+  }
+
   async genApis(tags: string[]) {
     const data = this.data
     const project = this.project
