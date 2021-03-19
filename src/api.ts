@@ -372,51 +372,66 @@ export default class ApiTool extends BaseTool {
         }
         docs.push(`@param {${typeName}} ${name}`)
         queryParameters.forEach(x => {
-          if(x.name.indexOf("[0].") !== -1) {
-            const splitNames = x.name.split("[0].")
-            const name = splitNames[0]
-            const childName = splitNames[1]
-            if(define.properties[name]) {
-              // @ts-ignore
-              define.properties[name]["items"]["properties"][childName] = {
-                ...x,
-                name: childName
+          if(x.name.indexOf(".") !== -1) {
+            const splitNames = x.name.split(".")
+            let ref: any = define.properties
+            splitNames.forEach((oriName, index, array) => {
+              let name = oriName
+              if (array.length - 1 === index) {
+                ref[name] = {
+                  ...x,
+                  name
+                }
+                return
               }
-            } else {
-              define.properties[name] = {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    [childName]: {
-                      ...x,
-                      name: childName
+              if (oriName.endsWith("[0]")) {
+                name = oriName.slice(0, oriName.length - 3)
+                if(!ref[name]) {
+                  ref[name] = {
+                    type: "array",
+                    name: index > 0 && name,
+                    items: {
+                      type: "object",
+                      properties: {
+                      }
+                    }
+                  } as any
+                }
+                ref = ref[name]["items"]["properties"]
+              } else {
+                if(!ref[name]) {
+                  ref[name] = {
+                    name: index > 0 && name,
+                    type: "object",
+                    properties: {
                     }
                   }
                 }
-              } as any
-            } 
-          } else if(x.name.indexOf(".") !== -1){
-            const splitNames = x.name.split(".")
-            const name = splitNames[0]
-            const childName = splitNames[1]
-            if(define.properties[name]) {
-              // @ts-ignore
-              define.properties[name]["properties"][childName] = {
-                ...x,
-                name: childName
+                ref = ref[name]["properties"]
               }
-            } else {
-              define.properties[name] = {
-                type: "object",
-                properties: {
-                  [childName]: { 
-                    ...x,
-                    name: childName
-                  }
-                }
-              } as any
-            } 
+            })
+            // const name = splitNames[0]
+            // const childName = splitNames[1]
+            // if(define.properties[name]) {
+            //   // @ts-ignore
+            //   define.properties[name]["items"]["properties"][childName] = {
+            //     ...x,
+            //     name: childName
+            //   }
+            // } else {
+            //   define.properties[name] = {
+            //     type: "array",
+            //     items: {
+            //       type: "object",
+            //       properties: {
+            //         [childName]: {
+            //           ...x,
+            //           name: childName
+            //         }
+            //       }
+            //     }
+            //   } as any
+            // } 
           } else {
             define.properties[x.name] = x as any
           }
