@@ -28,7 +28,7 @@
     "@types/ejs": "^2.6.0",
     "@types/inquirer": "^7.3.1",
     "@types/node": "^10.12.10",
-    "axios": "^0.18.1",
+    "axios": "^0.21.1",
     "change-case": "^4.1.1",
     "commander": "^2.19.0",
     "cors": "^2.8.5",
