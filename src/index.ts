@@ -5,7 +5,7 @@ import main from './main';
 
 
 program
-  .version('1.0.0')
+  .version(require("../package.json").version)
   .option('init [name]', 'init a project')
   .option('mock-data', 'mock data')
   .option('mock-server', 'mock server')
