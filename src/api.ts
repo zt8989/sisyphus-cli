@@ -1,4 +1,4 @@
-import { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure, StructureKind, Project } from 'ts-morph';
+import { PropertyDeclarationStructure, ImportDeclarationStructure, FunctionDeclarationStructure, ParameterDeclarationStructure, CodeBlockWriter, EnumDeclarationStructure, StructureKind, Project, WriterFunction } from 'ts-morph';
 import fs from 'fs'
 import { scalarType } from './utils/enum';
 import BaseTool from './baseTool'
@@ -106,7 +106,7 @@ export default class ApiTool extends BaseTool {
       }
 
       const paths = data.paths
-      const functions: FunctionDeclarationStructure[] = []
+      const functions: (FunctionDeclarationStructure | WriterFunction)[] = []
       
       const imports: ImportDeclarationStructure[] = [...defaultImports]
    
@@ -149,7 +149,7 @@ export default class ApiTool extends BaseTool {
 
           const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
           const isDownload = this.isDownloadApi(methods[method])
-          
+
           const returnType = this.getReturnType(methods[method], imports, data.definitions)
           functions.push({
             kind: StructureKind.Function,
@@ -174,6 +174,8 @@ export default class ApiTool extends BaseTool {
             docs: docs.length > 0 ? [docs.join('\n')] : [],
             isExported: true,
           })
+
+          functions.push(writer => writer.writeLine(`${methodName}.args = ${Object.keys(parameters).length}`))
         }
       }
 
