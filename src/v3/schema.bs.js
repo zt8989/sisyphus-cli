@@ -110,7 +110,6 @@ function writeTypes(parameters, writer, f) {
                 p.required ? "" : "?"
               ) + ": " + match._0;
       });
-  console.log(list.join(","));
   writer.write(list.join(","));
   
 }

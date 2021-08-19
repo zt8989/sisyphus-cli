@@ -16,14 +16,5 @@ function getFullUrl(formatUrl, baseUrlOpt, url) {
   }
 }
 
-function basePath(pOpt) {
-  if (pOpt !== undefined) {
-    return pOpt;
-  } else {
-    return "/";
-  }
-}
-
 exports.getFullUrl = getFullUrl;
-exports.basePath = basePath;
 /* path Not a pure module */

@@ -68,7 +68,6 @@ let writeTypes = (parameters, writer, f) => {
       | Object(dataType, _) => j`${p["name"]}${!p["required"] ? "?":""}: ${dataType}`
     }
   })
-  Js.log(list->Js_array2.joinWith(","))
   writer["write"](. list->Js_array2.joinWith(","))->ignore
 }
 
