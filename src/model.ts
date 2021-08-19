@@ -2,12 +2,17 @@ import BaseTool from './baseTool'
 import { SwaggerJson } from './types';
 import ModelFile from './modelFile';
 import { TOKEN } from './utils/modelNameParser';
+import { getSchemaFromRef, getTypeNameFromRef } from './v3/schema.bs';
 
 
-export default class ModelTool extends BaseTool{
+export default class ModelTool<T extends SwaggerJson = SwaggerJson> extends BaseTool{
 
-  async preMap(data: SwaggerJson) {
-    const definitions = data.definitions
+  getDefinitions(data: T){
+    return data.definitions
+  }
+
+  async preMap(data: T) {
+    const definitions = this.getDefinitions(data)
     const count: Record<string, number> = {}
     const map: Record<string, string> = {}
 
@@ -27,14 +32,12 @@ export default class ModelTool extends BaseTool{
     this.context.fileMap = map
   }
 
-  async genModels(data: SwaggerJson) {
-    const definitions = data.definitions
-
+  async genModels(data: T) {
     // 记录已经创建的泛型类
     for(let modelName of this.context.imports) {
-      modelName = this.getModelNameFromRef(modelName)
-      if(definitions[modelName]){
-        const modelFile = new ModelFile(this.context, this.project, modelName, definitions[modelName])
+      const schema = getSchemaFromRef(data, modelName)
+      if(schema){
+        const modelFile = new ModelFile(this.context, this.project, getTypeNameFromRef(modelName), schema)
         modelFile.create()
       }
     }

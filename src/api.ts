@@ -5,15 +5,16 @@ import BaseTool from './baseTool'
 import { BODY_PARAMS, QUERY_PARAMS, PATH_PARAMS } from './constants';
 import { join, parse, posix } from 'path';
 import * as changeCase from "change-case";
-import { Context, RenameOption, SwaggerDefinition, SwaggerDefinitions, SwaggerJson, SwaggerParameter, SwaggerRequest, SwaggerTag } from './types';
+import { Context, RenameOption, SwaggerDefinition, SwaggerJson, SwaggerParameter, SwaggerRequest, SwaggerTag } from './types';
 import ModelFile from './modelFile';
 import Faker from './faker'
 import beautify from "json-beautify"
+import { getSchemaFromRef } from './v3/schema.bs';
 
 const retainWord = ['delete']
 
 export default class ApiTool extends BaseTool {
-  private data: SwaggerJson
+  protected data: SwaggerJson
 
   constructor(context: Context, project: Project, data: SwaggerJson) {
     super(context, project)
@@ -65,7 +66,7 @@ export default class ApiTool extends BaseTool {
 
     return tags.map(x => {
       const paths = data.paths
-      let urls = []
+      let urls: string[] = []
       for (let url in paths) {
         const methods = paths[url]
         for (let method in methods) {
@@ -116,7 +117,7 @@ export default class ApiTool extends BaseTool {
           if(methods[method].tags.indexOf(tag) === -1){
             break
           }
-          const docs = []
+          const docs: string[] = []
           const headers : {[key: string]: string} = {}
           if (methods[method].summary) {
             docs.push(methods[method].summary)
@@ -141,7 +142,7 @@ export default class ApiTool extends BaseTool {
             docs: [...docs]
           })
 
-          docs.push(`${method.toUpperCase()} ${posix.join(data.basePath ,url)}`)
+          docs.push(`${method.toUpperCase()} ${this.getFullUrl(data.basePath ,url)}`)
 
           if(methods[method]?.deprecated === true) {
             docs.push(`@deprecated`)
@@ -150,7 +151,7 @@ export default class ApiTool extends BaseTool {
           const parameters = this.getParameters(methods[method], imports, docs, headers, methodName)
           const isDownload = this.isDownloadApi(methods[method])
 
-          const returnType = this.getReturnType(methods[method], imports, data.definitions)
+          const returnType = this.getReturnType(methods[method], imports, data)
           functions.push({
             kind: StructureKind.Function,
             name: methodName
@@ -159,7 +160,7 @@ export default class ApiTool extends BaseTool {
               + ((returnType !== 'any' && this.context.config.responseNullable) ? ' | null' : '')
               + '>',
             parameters: this.handleFunctionParameters(parameters),
-            returnType: this.getReturn(methods[method], imports, data.definitions),
+            returnType: this.getReturn(methods[method], imports, data),
             statements: writer => {
               writer.writeLine(`return request({`)
                 .writeLine(`url: bindUrl(${URLS_ENUM_NAME}.${methodName}, ${parameters.hasOwnProperty(PATH_PARAMS) ? PATH_PARAMS : '{}'}),`)
@@ -175,7 +176,7 @@ export default class ApiTool extends BaseTool {
             isExported: true,
           })
 
-          functions.push(writer => writer.writeLine(`${methodName}.args = ${Object.keys(parameters).length}`))
+          // functions.push(writer => writer.writeLine(`${methodName}.args = ${Object.keys(parameters).length}`))
         }
       }
 
@@ -189,7 +190,7 @@ export default class ApiTool extends BaseTool {
     }
   }
 
-  getFullUrl(baseUrl: string, url: string){
+  getFullUrl(baseUrl: string = "/", url: string = ""){
     if(this.context.config.formatUrl) {
       return this.context.config.formatUrl(baseUrl, url)
     }
@@ -213,7 +214,7 @@ export default class ApiTool extends BaseTool {
           }
           const fullUrl = this.getFullUrl(data.basePath, url)
 
-          const mockData = this.getMockData(methods[method], data.definitions)
+          const mockData = this.getMockData(methods[method], data)
           this.mockObject[`${method.toUpperCase()} ${fullUrl}`] = mockData
         }
       }
@@ -244,13 +245,13 @@ export default class ApiTool extends BaseTool {
     return Object.keys(parameters).map(x => parameters[x])
   }
 
-  getMockData(path: SwaggerRequest, definitions: SwaggerDefinitions){
-    const faker = new Faker(definitions)
+  getMockData(path: SwaggerRequest, data: SwaggerJson){
+    const faker = new Faker(data)
     if (path.responses[200]) {
       let schema = path.responses[200].schema
       if (schema && schema.$ref) {
         let ref = schema.$ref
-        const define = definitions[ref.slice('#/definitions/'.length)]
+        const define = getSchemaFromRef(data, ref)
         faker.fake(ref, define)
       } else {
         // other
@@ -337,6 +338,9 @@ export default class ApiTool extends BaseTool {
   //     ],
   //   })
   // }
+  writePathTypes(parameters: SwaggerParameter[], writer: CodeBlockWriter, optional: boolean = false) {
+    this.writeTypes(parameters, writer)
+  }
 
   getParameters(path: SwaggerRequest, imports: ImportDeclarationStructure[], docs: string[], headers: {[key: string]: string }, methodName: string) {
     const result: { [key: string]: ParameterDeclarationStructure } = {}
@@ -352,194 +356,213 @@ export default class ApiTool extends BaseTool {
         name,
         type: (writer: CodeBlockWriter) => {
           writer.write("{ ")
-          this.writeTypes(pathParameters, writer)
+          this.writePathTypes(pathParameters, writer)
           writer.write(" }")
         }
       }
     }
 
-    const queryParameters = parameters.filter(x => x.in === 'query')
-    if (queryParameters.length > 0) {
-      const name = 'queryParams'
-
-      if(queryParameters.length > 2 || queryParameters.some(x => x.name.includes("."))) {
-        const fileName = methodName + "Query"
-        const typeName = fileName[0].toUpperCase() + fileName.slice(1)
-        const define: SwaggerDefinition = {
-          type: 'object',
-          required: true,
-          properties: {},
-          title: typeName,
-          description: typeName
+    const allQueryParameters = parameters.filter(x => x.in === 'query')
+    {
+      const queryParameters = allQueryParameters.filter(x => x?.schema?.$ref)
+      queryParameters.forEach(x => {
+        let type: string = "any"
+        if(getSchemaFromRef(this.data, x?.schema?.$ref)) {
+          type = this.checkAndAddImport(x?.schema?.$ref!, imports)
         }
-        docs.push(`@param {${typeName}} ${name}`)
-        queryParameters.forEach(x => {
-          if(x.name.indexOf(".") !== -1) {
-            const splitNames = x.name.split(".")
-            let ref: any = define.properties
-            splitNames.forEach((oriName, index, array) => {
-              let name = oriName
-              if (array.length - 1 === index) {
-                ref[name] = {
-                  ...x,
-                  name
-                }
-                return
-              }
-              if (oriName.endsWith("[0]")) {
-                name = oriName.slice(0, oriName.length - 3)
-                if(!ref[name]) {
+        result[QUERY_PARAMS] = {
+          kind: StructureKind.Parameter,
+          name: QUERY_PARAMS,
+          type,
+        }
+        docs.push(`@param {${type}} ${QUERY_PARAMS} - ${x.description}`)
+      })
+    }
+    {
+      const queryParameters = allQueryParameters.filter(x => !x?.schema?.$ref)
+      if (queryParameters.length > 0) {
+        const name = 'queryParams'
+  
+        if(queryParameters.length > 2 || queryParameters.some(x => x.name.includes("."))) {
+          const fileName = methodName + "Query"
+          const typeName = fileName[0].toUpperCase() + fileName.slice(1)
+          const define: SwaggerDefinition = {
+            type: 'object',
+            required: true,
+            properties: {},
+            title: typeName,
+            description: typeName
+          }
+          docs.push(`@param {${typeName}} ${name}`)
+          queryParameters.forEach(x => {
+            if(x.name.indexOf(".") !== -1) {
+              const splitNames = x.name.split(".")
+              let ref: any = define.properties
+              splitNames.forEach((oriName, index, array) => {
+                let name = oriName
+                if (array.length - 1 === index) {
                   ref[name] = {
-                    type: "array",
-                    name: index > 0 && name,
-                    items: {
+                    ...x,
+                    name
+                  }
+                  return
+                }
+                if (oriName.endsWith("[0]")) {
+                  name = oriName.slice(0, oriName.length - 3)
+                  if(!ref[name]) {
+                    ref[name] = {
+                      type: "array",
+                      name: index > 0 && name,
+                      items: {
+                        type: "object",
+                        properties: {
+                        }
+                      }
+                    } as any
+                  }
+                  ref = ref[name]["items"]["properties"]
+                } else {
+                  if(!ref[name]) {
+                    ref[name] = {
+                      name: index > 0 && name,
                       type: "object",
                       properties: {
                       }
                     }
-                  } as any
-                }
-                ref = ref[name]["items"]["properties"]
-              } else {
-                if(!ref[name]) {
-                  ref[name] = {
-                    name: index > 0 && name,
-                    type: "object",
-                    properties: {
-                    }
                   }
+                  ref = ref[name]["properties"]
                 }
-                ref = ref[name]["properties"]
-              }
-            })
-            // const name = splitNames[0]
-            // const childName = splitNames[1]
-            // if(define.properties[name]) {
-            //   // @ts-ignore
-            //   define.properties[name]["items"]["properties"][childName] = {
-            //     ...x,
-            //     name: childName
-            //   }
-            // } else {
-            //   define.properties[name] = {
-            //     type: "array",
-            //     items: {
-            //       type: "object",
-            //       properties: {
-            //         [childName]: {
-            //           ...x,
-            //           name: childName
-            //         }
-            //       }
-            //     }
-            //   } as any
-            // } 
-          } else {
-            define.properties[x.name] = x as any
-          }
-        })
-        new ModelFile({ ...this.context, imports: [] }, this.project, typeName, define).create()
-        result[name] = {
-          kind: StructureKind.Parameter,
-          name: name,
-          type: typeName
-        }
-        imports.push({
-          kind: StructureKind.ImportDeclaration,
-          moduleSpecifier: this.getRelativePath(typeName),
-          defaultImport: typeName
-        })
-      } else {
-        docs.push(`@param {Object} ${name}`)
-        this.getParameterDocs(name, queryParameters, docs)
-        result[name] = {
-          kind: StructureKind.Parameter,
-          name,
-          type: (writer: CodeBlockWriter) => {
-            writer.write("{ ")
-            this.writeTypes(queryParameters, writer, this.context.config.optionalQuery)
-            writer.write(" }")
-          }
-        }
-      }
-    }
-
-    for (let param of parameters) {
-      if (param.in === 'body') {
-        if (param?.schema?.$ref) {
-          let type: string = "any"
-          if(this.data.definitions[this.getModelNameFromRef(param.schema.$ref)]) {
-            type = this.checkAndAddImport(param.schema.$ref, imports)
-          }
-          result[BODY_PARAMS] = {
-            kind: StructureKind.Parameter,
-            name: BODY_PARAMS,
-            type,
-          }
-          docs.push(`@param {${type}} ${BODY_PARAMS} - ${param.description}`)
-        } else if(param?.schema?.type && Reflect.has(scalarType, param?.schema?.type ?? "")){
-          result[BODY_PARAMS] = {
-            kind: StructureKind.Parameter,
-            name: BODY_PARAMS,
-            type: scalarType[param.schema.type ?? ""],
-          }
-          docs.push(`@param {${scalarType[param.schema.type ?? ""]}} ${BODY_PARAMS} - ${param.description}`)
-        } else if (param?.schema?.type === 'array') {
-          if(param?.schema?.items?.$ref){
-            // 其他类型参数-array
-            const type = this.checkAndAddImport(param.schema.items.$ref, imports)
-            result[BODY_PARAMS] = {
-              kind: StructureKind.Parameter,
-              name: BODY_PARAMS,
-              type: type + '[]',
+              })
+              // const name = splitNames[0]
+              // const childName = splitNames[1]
+              // if(define.properties[name]) {
+              //   // @ts-ignore
+              //   define.properties[name]["items"]["properties"][childName] = {
+              //     ...x,
+              //     name: childName
+              //   }
+              // } else {
+              //   define.properties[name] = {
+              //     type: "array",
+              //     items: {
+              //       type: "object",
+              //       properties: {
+              //         [childName]: {
+              //           ...x,
+              //           name: childName
+              //         }
+              //       }
+              //     }
+              //   } as any
+              // } 
+            } else {
+              define.properties[x.name] = x as any
             }
-            docs.push(`@param {${type}[]} ${BODY_PARAMS} - ${param.description}`)
-          }else if(param?.schema?.items?.type && scalarType[param.schema.items.type ?? ""]){
-            result[BODY_PARAMS] = {
-              kind: StructureKind.Parameter,
-              name: BODY_PARAMS,
-              type: scalarType[param.schema.items.type ?? ""] + '[]',
-            }
-            docs.push(`@param {${scalarType[param.schema.items.type ?? ""]}[]} ${BODY_PARAMS} - ${param.description}`)
-          } else {
-            result[BODY_PARAMS] = {
-              kind: StructureKind.Parameter,
-              name: BODY_PARAMS,
-              type: 'any[]',
-            }
-            docs.push(`@param {any[]} ${BODY_PARAMS} - ${param.description}`)
-          }
-        } else if(param?.schema?.type === 'object'){
-          result[BODY_PARAMS] = {
+          })
+          new ModelFile({ ...this.context, imports: [] }, this.project, typeName, define).create()
+          result[name] = {
             kind: StructureKind.Parameter,
-            name: BODY_PARAMS,
-            type: 'any',
+            name: name,
+            type: typeName
           }
-          docs.push(`@param any ${BODY_PARAMS} - ${param.description}`)
+          imports.push({
+            kind: StructureKind.ImportDeclaration,
+            moduleSpecifier: this.getRelativePath(typeName),
+            defaultImport: typeName
+          })
         } else {
-          // 其他类型参数-object
-          result[BODY_PARAMS] = {
+          docs.push(`@param {Object} ${name}`)
+          this.getParameterDocs(name, queryParameters, docs)
+          result[name] = {
             kind: StructureKind.Parameter,
-            name: BODY_PARAMS,
-            type: 'any',
+            name,
+            type: (writer: CodeBlockWriter) => {
+              writer.write("{ ")
+              this.writeTypes(queryParameters, writer, this.context.config.optionalQuery)
+              writer.write(" }")
+            }
           }
-          docs.push(`@param any ${BODY_PARAMS} - ${param.description}`)
         }
-      } else if (param.in === 'formData') {
-        // api包含formData：如文件
-        if (param.type === 'file') {
-          result['bodyParams'] = {
-            kind: StructureKind.Parameter,
-            name: 'bodyParams', 
-            type: 'FormData',
+      }
+  
+      for (let param of parameters) {
+        if (param.in === 'body') {
+          if (param?.schema?.$ref) {
+            let type: string = "any"
+            if(getSchemaFromRef(this.data, param.schema.$ref)) {
+              type = this.checkAndAddImport(param.schema.$ref, imports)
+            }
+            result[BODY_PARAMS] = {
+              kind: StructureKind.Parameter,
+              name: BODY_PARAMS,
+              type,
+            }
+            docs.push(`@param {${type}} ${BODY_PARAMS} - ${param.description}`)
+          } else if(param?.schema?.type && Reflect.has(scalarType, param?.schema?.type ?? "")){
+            result[BODY_PARAMS] = {
+              kind: StructureKind.Parameter,
+              name: BODY_PARAMS,
+              type: scalarType[param.schema.type ?? ""],
+            }
+            docs.push(`@param {${scalarType[param.schema.type ?? ""]}} ${BODY_PARAMS} - ${param.description}`)
+          } else if (param?.schema?.type === 'array') {
+            if(param?.schema?.items?.$ref){
+              // 其他类型参数-array
+              const type = this.checkAndAddImport(param.schema.items.$ref, imports)
+              result[BODY_PARAMS] = {
+                kind: StructureKind.Parameter,
+                name: BODY_PARAMS,
+                type: type + '[]',
+              }
+              docs.push(`@param {${type}[]} ${BODY_PARAMS} - ${param.description}`)
+            }else if(param?.schema?.items?.type && scalarType[param.schema.items.type ?? ""]){
+              result[BODY_PARAMS] = {
+                kind: StructureKind.Parameter,
+                name: BODY_PARAMS,
+                type: scalarType[param.schema.items.type ?? ""] + '[]',
+              }
+              docs.push(`@param {${scalarType[param.schema.items.type ?? ""]}[]} ${BODY_PARAMS} - ${param.description}`)
+            } else {
+              result[BODY_PARAMS] = {
+                kind: StructureKind.Parameter,
+                name: BODY_PARAMS,
+                type: 'any[]',
+              }
+              docs.push(`@param {any[]} ${BODY_PARAMS} - ${param.description}`)
+            }
+          } else if(param?.schema?.type === 'object'){
+            result[BODY_PARAMS] = {
+              kind: StructureKind.Parameter,
+              name: BODY_PARAMS,
+              type: 'any',
+            }
+            docs.push(`@param any ${BODY_PARAMS} - ${param.description}`)
+          } else {
+            // 其他类型参数-object
+            result[BODY_PARAMS] = {
+              kind: StructureKind.Parameter,
+              name: BODY_PARAMS,
+              type: 'any',
+            }
+            docs.push(`@param any ${BODY_PARAMS} - ${param.description}`)
           }
-          docs.push(`@param FormData bodyParams - ${param.description}`)
-          headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        } else if (param.in === 'formData') {
+          // api包含formData：如文件
+          if (param.type === 'file') {
+            result['bodyParams'] = {
+              kind: StructureKind.Parameter,
+              name: 'bodyParams', 
+              type: 'FormData',
+            }
+            docs.push(`@param FormData bodyParams - ${param.description}`)
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+          }
+        } else {
+          // other
         }
-      } else {
-        // other
       }
     }
+    
 
     if(this.context.config.appendOptions) {
       result['options'] = {
@@ -597,17 +620,17 @@ export default class ApiTool extends BaseTool {
     fs.writeFileSync(path, JSON.stringify(map, null, '\n'))
   }
 
-  getReturn(path: SwaggerRequest, imports: ImportDeclarationStructure[], definitions: SwaggerDefinitions) {
+  getReturn(path: SwaggerRequest, imports: ImportDeclarationStructure[], data: SwaggerJson) {
     return "Promise<T>"
   }
 
-  getReturnType(path: SwaggerRequest, imports: ImportDeclarationStructure[], definitions: SwaggerDefinitions) {
+  getReturnType(path: SwaggerRequest, imports: ImportDeclarationStructure[], data: SwaggerJson) {
     if (path.responses[200]) {
       let schema = path.responses[200].schema
       if (schema && schema.$ref) {
         let ref = schema.$ref
         if(this.context.config.dataKey) {
-          const define = definitions[ref.slice('#/definitions/'.length)]
+          const define = getSchemaFromRef(data, ref)
           let schema = define.properties[this.context.config.dataKey]
           if(schema && schema.$ref) {
             const type = this.checkAndAddImport(schema.$ref, imports, [])

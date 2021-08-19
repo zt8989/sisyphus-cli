@@ -1,8 +1,6 @@
 import request from './request'
 import { Project } from 'ts-morph'
-import ModelTool from './model';
 import fs from 'fs'
-import ApiTool from './api';
 import path, { join } from 'path'
 import { promisify } from 'util'
 import ejs from 'ejs'
@@ -12,6 +10,7 @@ import { createApp } from './site';
 import inquirer from 'inquirer'
 inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'));
 import pinyin from 'pinyin-match'
+import { makeApi, makeModel } from './factory.bs';
 
 // @ts-ignore
 async function genIndex() {
@@ -160,13 +159,13 @@ async function importSwagger(cmdObj: any) {
       imports: []
     }
 
-    const modelService = new ModelTool(context, project)
+    const modelService = makeModel(data)(context, project)
 
-    await modelService.preMap(data)
+    await modelService.preMap(data as any)
 
     let tags = data.tags
 
-    const tool =  new ApiTool(context, project, data)
+    const tool =  makeApi(data)(context, project, data)
 
     const choices = tool.genUrls(tags.map(x => {
       const map = (config.tags || {})[x.name]
@@ -197,7 +196,7 @@ async function importSwagger(cmdObj: any) {
 
     await tool.genApis(answers[name])
 
-    await modelService.genModels(data)
+    await modelService.genModels(data as any)
     // if(!config.onlyModel) {
     // }
     // await genIndex(project)
@@ -277,7 +276,7 @@ async function mockData(cmdObj: any){
       }
     }
 
-    await new ApiTool(context, project, data).genMocks(tags)
+    await makeApi(data)(context, project, data).genMocks(tags)
     await project.save()
     console.log(`生成成功！执行以下命令修复js格式`)
     console.log(`yarn prettier --write ./mock/*.js`)

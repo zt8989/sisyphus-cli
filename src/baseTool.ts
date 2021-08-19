@@ -3,6 +3,7 @@ import { CodeBlockWriter, ImportDeclarationStructure, Project, PropertyDeclarati
 import { scalarType } from "./utils/enum";
 import { Context, SwaggerParameter, SwaggerProperty } from "./types";
 import { mapValues } from "./utils/obj";
+import { getTypeNameFromRef } from "./v3/schema.bs";
 
 const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
 
@@ -216,14 +217,10 @@ export default class BaseTool {
   }
 
   checkAndAddImport(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {
-    const name = this.getModelNameFromRef(ref)
+    const name = getTypeNameFromRef(ref)
     if(!this.context.imports.includes(ref)){
       this.context.imports.push(ref)
     }
     return this._checkAndAddImport(name, imports, exclude)
-  }
-
-  getModelNameFromRef(ref: string){
-    return ref.slice('#/definitions/'.length)
   }
 }
