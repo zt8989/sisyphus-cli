@@ -1,13 +1,14 @@
-import { SwaggerDefinition, SwaggerDefinitions, SwaggerProperty } from "./types";
+import { SwaggerDefinition, SwaggerJson, SwaggerProperty } from "./types";
 import { scalarType } from "./utils/enum";
 import {forEachValues} from './utils/obj'
+import { getSchemaFromRef } from "./v3/schema.bs";
 
 export default class Faker {
   private obj: any
   private refStack: any[] = []
   private refs: any = {}
 
-  constructor(private definitions: SwaggerDefinitions){
+  constructor(private data: SwaggerJson){
     this.obj = {}
     this.refStack.push(this.obj)
   }
@@ -36,7 +37,7 @@ export default class Faker {
       currentRef[name] = {}
       currentRef = currentRef[name]
       this.refStack.push(currentRef)
-      this.fake(prop.$ref, this.definitions[prop.$ref.slice('#/definitions/'.length)])
+      this.fake(prop.$ref, getSchemaFromRef(this.data, prop.$ref))
       this.refStack.pop()
     }
 

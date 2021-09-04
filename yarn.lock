@@ -31,6 +31,11 @@
     "@nodelib/fs.scandir" "2.1.3"
     fastq "^1.6.0"
 
+"@ryyppy/rescript-promise@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.nlark.com/@ryyppy/rescript-promise/download/@ryyppy/rescript-promise-2.1.0.tgz#a33861274c41360cfbe872cf489f3dcb8dd526e6"
+  integrity sha1-ozhhJ0xBNgz76HLPSJ89y43VJuY=
+
 "@ts-morph/common@~0.7.0":
   version "0.7.1"
   resolved "https://registry.npm.taobao.org/@ts-morph/common/download/@ts-morph/common-0.7.1.tgz#ca4413e9cdfed3f60824b2ffab6ea82b59aed008"
@@ -560,6 +565,11 @@ fresh@0.5.2:
   resolved "https://registry.npmjs.org/fresh/-/fresh-0.5.2.tgz#3d8cadd90d976569fa835ab1f8e4b23a105605a7"
   integrity sha1-PYyt2Q2XZWn6g1qx+OSyOhBWBac=
 
+gentype@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.nlark.com/gentype/download/gentype-4.1.0.tgz#ebc194894ec0aa637b082661419c6101bb0139b5"
+  integrity sha1-68GUiU7AqmN7CCZhQZxhAbsBObU=
+
 glob-parent@^5.1.0:
   version "5.1.2"
   resolved "https://registry.yarnpkg.com/glob-parent/-/glob-parent-5.1.2.tgz#869832c58034fe68a4093c17dc15e8340d8401c4"
@@ -881,6 +891,11 @@ no-case@^3.0.3:
     lower-case "^2.0.1"
     tslib "^1.10.0"
 
+node-fetch@^2.6.1:
+  version "2.6.1"
+  resolved "https://registry.nlark.com/node-fetch/download/node-fetch-2.6.1.tgz?cache=0&sync_timestamp=1626684741221&other_urls=https%3A%2F%2Fregistry.nlark.com%2Fnode-fetch%2Fdownload%2Fnode-fetch-2.6.1.tgz#045bd323631f76ed2e2b55573394416b639a0052"
+  integrity sha1-BFvTI2Mfdu0uK1VXM5RBa2OaAFI=
+
 object-assign@^4:
   version "4.1.1"
   resolved "https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
@@ -997,6 +1012,11 @@ raw-body@2.4.0:
     http-errors "1.7.2"
     iconv-lite "0.4.24"
     unpipe "1.0.0"
+
+rescript@^9.1.4:
+  version "9.1.4"
+  resolved "https://registry.nlark.com/rescript/download/rescript-9.1.4.tgz#1eb126f98d6c16942c0bf0df67c050198e580515"
+  integrity sha1-HrEm+Y1sFpQsC/DfZ8BQGY5YBRU=
 
 restore-cursor@^2.0.0:
   version "2.0.0"

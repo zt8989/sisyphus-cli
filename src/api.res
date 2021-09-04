@@ -1,0 +1,11 @@
+@module("path") external posix: {"join": (string, string) => string} = "posix"
+
+type formatUrl = (string, string) => string
+
+let getFullUrl = (formatUrl: option<formatUrl>, ~baseUrl="/", ~url) => {
+  if Js_option.isSome(formatUrl) {
+    formatUrl |> Js_option.map((. f) => f(baseUrl, url)) |> Js_option.getExn
+  } else {
+    posix["join"](baseUrl, url)
+  }
+}
