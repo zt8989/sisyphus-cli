@@ -9,3 +9,5 @@ let getFullUrl = (formatUrl: option<formatUrl>, ~baseUrl="/", ~url) => {
     posix["join"](baseUrl, url)
   }
 }
+
+let getDesc = param => param->Js_dict.get("description") |> Js_option.getWithDefault("")

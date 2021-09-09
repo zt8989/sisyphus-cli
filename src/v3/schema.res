@@ -1,5 +1,10 @@
 external anyToDict: 'a => Js_dict.t<'a> = "%identity"
 
+module SchemaResolve = {
+  type request
+  let requestBody = (request: request) => request->anyToDict->Js_dict.get("requestBody")
+}
+
 type dataType = [#integer | #number | #boolean | #string | #array |#object]
 type dataFormat = [
   | #int32

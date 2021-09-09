@@ -2,9 +2,18 @@
 'use strict';
 
 var Js_exn = require("rescript/lib/js/js_exn.js");
+var Js_dict = require("rescript/lib/js/js_dict.js");
 var Js_option = require("rescript/lib/js/js_option.js");
 var Caml_array = require("rescript/lib/js/caml_array.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
+
+function requestBody(request) {
+  return Js_dict.get(request, "requestBody");
+}
+
+var SchemaResolve = {
+  requestBody: requestBody
+};
 
 function getModelNameFromRef(ref) {
   return ref.slice("#/".length).split("/");
@@ -122,6 +131,7 @@ function getSchemaFromRef(data, ref) {
               }), Caml_option.some(data));
 }
 
+exports.SchemaResolve = SchemaResolve;
 exports.getModelNameFromRef = getModelNameFromRef;
 exports.getTypeNameFromRef = getTypeNameFromRef;
 exports.getRefType = getRefType;

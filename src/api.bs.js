@@ -3,6 +3,7 @@
 
 var Path = require("path");
 var Curry = require("rescript/lib/js/curry.js");
+var Js_dict = require("rescript/lib/js/js_dict.js");
 var Js_option = require("rescript/lib/js/js_option.js");
 
 function getFullUrl(formatUrl, baseUrlOpt, url) {
@@ -16,5 +17,10 @@ function getFullUrl(formatUrl, baseUrlOpt, url) {
   }
 }
 
+function getDesc(param) {
+  return Js_option.getWithDefault("", Js_dict.get(param, "description"));
+}
+
 exports.getFullUrl = getFullUrl;
+exports.getDesc = getDesc;
 /* path Not a pure module */
