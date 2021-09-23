@@ -3,7 +3,6 @@
 
 var Api = require("./api").default;
 var Model = require("./model").default;
-var Js_option = require("rescript/lib/js/js_option.js");
 var ApiTool = require("./v3/apiTool").default;
 var ModelTool = require("./v3/modelTool").default;
 
@@ -24,7 +23,7 @@ function modelV3(prim0, prim1) {
 }
 
 function getIsVersion3(data) {
-  var v = Js_option.some(data.openapi);
+  var v = data.openapi;
   if (v !== undefined) {
     return v.startsWith("3");
   } else {

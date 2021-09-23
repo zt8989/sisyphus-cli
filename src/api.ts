@@ -127,7 +127,6 @@ export default class ApiTool<
         name: URLS_ENUM_NAME,
         isExported: true,
         members: [],
-        isConst: true,
         kind: StructureKind.Enum,
       };
 
