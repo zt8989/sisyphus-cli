@@ -5,7 +5,7 @@ import path, { join } from "path";
 import { promisify } from "util";
 import ejs from "ejs";
 import ora from "ora";
-import { ConfigDefinition, Context, SwaggerJson, SwaggerTag } from "./types";
+import { ConfigDefinition, Context, SwaggerJson } from "./types";
 import { createApp } from "./site";
 import inquirer from "inquirer";
 inquirer.registerPrompt(
@@ -142,6 +142,17 @@ function getValues(map: Record<string, string>) {
   return Object.keys(map).map((x) => map[x]);
 }
 
+function makeProject() {
+  const project = new Project({
+    manipulationSettings: {
+      indentationText: IndentationText.TwoSpaces,
+      quoteKind: QuoteKind.Single,
+      useTrailingCommas: false,
+    },
+  });
+  return project;
+}
+
 async function importSwagger(cmdObj: any) {
   const config = getConfig(cmdObj);
   if (config === false) return;
@@ -149,6 +160,82 @@ async function importSwagger(cmdObj: any) {
   let files =
     typeof config.file === "string" ? { default: config.file } : config.file;
 
+  files = await getServers(files);
+
+  for (let key in files) {
+    let file = files[key];
+    const data: SwaggerJson<any> | false = await getData(file);
+    if (data === false) return;
+    const project = makeProject();
+    const context: Context = {
+      config,
+      fileMap: {},
+      outDir: key === "default" ? config.outDir : join(config.outDir, key),
+      generic: [],
+      imports: [],
+    };
+
+    const modelService = makeModel(data)(context, project);
+
+    await modelService.preMap(data as any);
+
+    let tags = data.tags;
+    const tool = makeApi(data)(context, project, data);
+
+    if (cmdObj.Y) {
+      await tool.genApis(tags.map((x) => x.name));
+    } else {
+      const ctls = await getControllers(tool, tags, config);
+      await tool.genApis(ctls);
+    }
+
+    await modelService.genModels(data as any);
+    // if(!config.onlyModel) {
+    // }
+    // await genIndex(project)
+    await project.save();
+  }
+  console.log(`生成成功！执行以下命令修复ts格式`);
+  console.log(`yarn prettier --write ${config.outDir}/**/*.ts`);
+}
+
+async function getControllers(tool, tags, config) {
+  const choices = tool.genUrls(
+    tags.map((x) => {
+      const map = (config.tags || {})[x.name];
+      return {
+        name: x.name + (map ? `(${map})` : ""),
+        value: x.name,
+      };
+    })
+  );
+
+  const name = "tags";
+  const message = "search the controller you want to generate.";
+
+  const answers = await inquirer.prompt([
+    {
+      name,
+      message,
+      type: "checkbox-plus",
+      searchable: true,
+      source: async (_: any, input: string) => {
+        const i = String.prototype.trim.call(input || "");
+        return i
+          ? choices.filter((x) => {
+              return (
+                pinyin.match(x.name, i) || x.urls.some((u) => u.includes(i))
+              );
+            })
+          : choices;
+      },
+    },
+  ]);
+
+  return answers[name];
+}
+
+async function getServers(files: any) {
   if (Object.keys(files).length > 1) {
     const choices = Object.keys(files).map((x) => `[${x}]: ${files[x]}`);
     const name = "source";
@@ -171,79 +258,7 @@ async function importSwagger(cmdObj: any) {
       files = newFiles;
     }
   }
-
-  for (let key in files) {
-    let file = files[key];
-    const data: SwaggerJson<any> | false = await getData(file);
-    if (data === false) return;
-    const project = new Project({
-      manipulationSettings: {
-        indentationText: IndentationText.TwoSpaces,
-        quoteKind: QuoteKind.Single,
-        useTrailingCommas: false,
-      },
-    });
-    const context: Context = {
-      config,
-      fileMap: {},
-      outDir: key === "default" ? config.outDir : join(config.outDir, key),
-      generic: [],
-      imports: [],
-    };
-
-    const modelService = makeModel(data)(context, project);
-
-    await modelService.preMap(data as any);
-
-    let tags = data.tags;
-    const tool = makeApi(data)(context, project, data);
-
-    if (cmdObj.Y) {
-      await tool.genApis(tags.map((x) => x.name));
-    } else {
-      const choices = tool.genUrls(
-        tags.map((x) => {
-          const map = (config.tags || {})[x.name];
-          return {
-            name: x.name + (map ? `(${map})` : ""),
-            value: x.name,
-          };
-        })
-      );
-
-      const name = "tags";
-      const message = "search the controller you want to generate.";
-
-      const answers = await inquirer.prompt([
-        {
-          name,
-          message,
-          type: "checkbox-plus",
-          searchable: true,
-          source: async (_: any, input: string) => {
-            const i = String.prototype.trim.call(input || "");
-            return i
-              ? choices.filter((x) => {
-                  return (
-                    pinyin.match(x.name, i) || x.urls.some((u) => u.includes(i))
-                  );
-                })
-              : choices;
-          },
-        },
-      ]);
-
-      await tool.genApis(answers[name]);
-    }
-
-    await modelService.genModels(data as any);
-    // if(!config.onlyModel) {
-    // }
-    // await genIndex(project)
-    await project.save();
-  }
-  console.log(`生成成功！执行以下命令修复ts格式`);
-  console.log(`yarn prettier --write ${config.outDir}/**/*.ts`);
+  return files;
 }
 
 async function mockData(cmdObj: any) {
@@ -253,32 +268,13 @@ async function mockData(cmdObj: any) {
   let files =
     typeof config.file === "string" ? { default: config.file } : config.file;
 
-  if (Object.keys(files).length > 1) {
-    const choices = Object.keys(files).map((x) => `[${x}]: ${files[x]}`);
-    const name = "select your import swagger, press <enter> to download all";
-    const answers = await inquirer.prompt([
-      {
-        name,
-        type: "checkbox",
-        choices: choices,
-      },
-    ]);
-    const newFiles: Record<string, string> = {};
-    if (answers[name].length > 0) {
-      Object.keys(files).forEach((x) => {
-        if (answers[name].includes(`[${x}]: ${files[x]}`)) {
-          newFiles[x] = files[x];
-        }
-      });
-      files = newFiles;
-    }
-  }
+  files = await getServers(files);
 
   for (let key in files) {
     let file = files[key];
     const data: SwaggerJson<any> | false = await getData(file);
     if (data === false) return;
-    const project = new Project();
+    const project = makeProject();
     const context: Context = {
       config,
       fileMap: {},
@@ -288,33 +284,10 @@ async function mockData(cmdObj: any) {
     };
 
     let tags = data.tags;
-    if (config.onlyTags) {
-      tags = tags.filter((x) => !!(config.tags || {})[x.name]);
-    }
 
-    if (tags.length > 1) {
-      const choices = tags.map((x) => x.name);
-      const name = "select your import tag, press <enter> to download all";
-      const answers = await inquirer.prompt([
-        {
-          name,
-          type: "checkbox",
-          choices: choices,
-        },
-      ]);
-      if (answers[name].length > 0) {
-        const newTags: SwaggerTag[] = [];
-
-        tags.forEach((x) => {
-          if (answers[name].includes(x.name)) {
-            newTags.push(x);
-          }
-        });
-        tags = newTags;
-      }
-    }
-
-    await makeApi(data)(context, project, data).genMocks(tags);
+    const tool = makeApi(data)(context, project, data);
+    const ctls = await getControllers(tool, tags, config);
+    await tool.genMocks(ctls);
     await project.save();
     console.log(`生成成功！执行以下命令修复js格式`);
     console.log(`yarn prettier --write ./mock/*.js`);

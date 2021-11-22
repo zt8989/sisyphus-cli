@@ -22,7 +22,6 @@ import {
   SwaggerParameter,
   SwaggerRequest,
   SwaggerRequestV2,
-  SwaggerTag,
   SwaggerTypes,
 } from "./types";
 import ModelFile from "./modelFile";
@@ -251,19 +250,18 @@ export default class ApiTool<
     return posix.join(baseUrl, url);
   }
 
-  async genMocks(tags: SwaggerTag[]) {
+  async genMocks(tags: string[]) {
     const data = this.data;
     const project = this.project;
 
     for (let tag of tags) {
-      const tagName = this.getTag(tag.name);
-
+      const tagName = this.getTag(tag);
       const paths = data.paths;
 
       for (let url in paths) {
         const methods = paths[url];
         for (let method in methods) {
-          if (methods[method].tags.indexOf(tag.name) === -1) {
+          if (methods[method].tags.indexOf(tag) === -1) {
             break;
           }
           const fullUrl = this.getFullUrl(data.basePath, url);
