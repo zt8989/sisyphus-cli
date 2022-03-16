@@ -1,10 +1,18 @@
-import { join } from "path";
-import { CodeBlockWriter, ImportDeclarationStructure, InterfaceDeclarationStructure, Project, PropertyDeclarationStructure, PropertySignatureStructure, StructureKind } from "ts-morph";
-import BaseTool from "./baseTool";
-import { Context, SwaggerDefinition } from "./types";
-import { scalarType } from "./utils/enum";
+import { join } from 'path'
+import {
+  CodeBlockWriter,
+  ImportDeclarationStructure,
+  InterfaceDeclarationStructure,
+  Project,
+  PropertyDeclarationStructure,
+  PropertySignatureStructure,
+  StructureKind,
+} from 'ts-morph'
+import BaseTool from './baseTool'
+import { Context, SwaggerDefinition } from './types'
+import { scalarType } from './utils/enum'
 import fs from 'fs'
-import Generator from "./generator";
+import Generator from './generator'
 
 const logger = require('debug')('model')
 
@@ -13,68 +21,80 @@ export default class ModelFile extends BaseTool {
   private modelName: string
   private definition: SwaggerDefinition
 
-  constructor(context: Context, project: Project, modelName: string, definition: SwaggerDefinition){
+  constructor(
+    context: Context,
+    project: Project,
+    modelName: string,
+    definition: SwaggerDefinition
+  ) {
     super(context, project)
     this.modelName = modelName
     this.definition = definition
   }
 
-  create(){
+  changeCaseName(name: string) {
+    return name.replace('-', '_')
+  }
+
+  create() {
     const modelName = this.modelName
     const definition = this.definition
     const map = this.context.fileMap
 
-    let struct = this.checkAndModifyModelName(modelName);
+    let struct = this.checkAndModifyModelName(modelName)
 
     if (struct !== false) {
-      const name = struct.name;
+      const name = this.changeCaseName(struct.name)
       if (struct.children.length > 0) {
-        const path = join(this.context.outDir, `model/${name}.ts`);
+        const path = join(this.context.outDir, `model/${name}.ts`)
         if (fs.existsSync(path)) {
-          fs.unlinkSync(path);
+          fs.unlinkSync(path)
         }
-        const properties = this.getProperties(definition, true);
+        const properties = this.getProperties(definition, true)
 
-        if(this.context.generic.includes(name)) {
+        if (this.context.generic.includes(name)) {
           return
         }
         this.context.generic.push(name)
 
-        const interfaces: InterfaceDeclarationStructure[] = [{
-          kind: StructureKind.Interface,
-          name: `${name}<T>`,
-          properties: properties,
-          isDefaultExport: true,
-          docs: definition.description ? [definition.description] : []
-        }]
-
-        this.project.createSourceFile(path, {
-          statements: [
-            ...this.imports,
-            ...interfaces
-          ]
-        });
-      } else {
-        if(this.context.generic.includes(modelName)){
-          return
-        }
-        const path = join(this.context.outDir, `model/${map[modelName] || modelName}.ts`);
-        if (fs.existsSync(path)) {
-          fs.unlinkSync(path);
-        }
-        const properties = this.getProperties(definition);
         const interfaces: InterfaceDeclarationStructure[] = [
           {
             kind: StructureKind.Interface,
-            name: modelName,
+            name: `${name}<T>`,
             properties: properties,
             isDefaultExport: true,
-            docs: definition.description ? [definition.description] : []
-          }
+            docs: definition.description ? [definition.description] : [],
+          },
+        ]
+
+        this.project.createSourceFile(path, {
+          statements: [...this.imports, ...interfaces],
+        })
+      } else {
+        if (this.context.generic.includes(modelName)) {
+          return
+        }
+        const name = this.changeCaseName(modelName)
+        const path = join(
+          this.context.outDir,
+          `model/${this.changeCaseName(map[modelName] || modelName)}.ts`
+        )
+        if (fs.existsSync(path)) {
+          fs.unlinkSync(path)
+        }
+        const properties = this.getProperties(definition)
+        const interfaces: InterfaceDeclarationStructure[] = [
+          {
+            kind: StructureKind.Interface,
+            name: name,
+            properties: properties,
+            isDefaultExport: true,
+            docs: definition.description ? [definition.description] : [],
+          },
         ]
         this.project.createSourceFile(path, {
-          statements: [...this.imports, ...interfaces]
-        });
+          statements: [...this.imports, ...interfaces],
+        })
       }
     }
   }
@@ -84,8 +104,10 @@ export default class ModelFile extends BaseTool {
     const that = this
 
     const properties: PropertySignatureStructure[] = []
-    if (definition.type === "object") {
-      let requiredList = Array.isArray(definition.required) ? definition.required : []
+    if (definition.type === 'object') {
+      let requiredList = Array.isArray(definition.required)
+        ? definition.required
+        : []
       for (let propName in definition.properties) {
         const prop = definition.properties[propName]
         // const type: PropertyDeclarationStructure["type"] | null = this.handleProp(prop, generic, (writer, callback) => {
@@ -95,76 +117,85 @@ export default class ModelFile extends BaseTool {
         const thunk = () => {
           const funcs: Function[] = []
           const generator = new Generator()
-          generator.addEventListener("*:start", (prop, deep) => {
-            if(deep > 1 && prop.name) {
-              funcs.push((writer: CodeBlockWriter) => writer.write(prop.name + ": "))
+          generator.addEventListener('*:start', (prop, deep) => {
+            if (deep > 1 && prop.name) {
+              funcs.push((writer: CodeBlockWriter) =>
+                writer.write(prop.name + ': ')
+              )
             }
           })
-          generator.addEventListener("*:end", (prop, deep) => {
-            if(deep > 2 && prop.name) {
-              funcs.push((writer: CodeBlockWriter) => writer.write(", "))
+          generator.addEventListener('*:end', (prop, deep) => {
+            if (deep > 2 && prop.name) {
+              funcs.push((writer: CodeBlockWriter) => writer.write(', '))
             }
           })
-          generator.addEventListener("object:start", (prop) => {
-            if(prop.properties) {
-              funcs.push((writer: CodeBlockWriter) => writer.write("{ "));
-            } else if(prop.additionalProperties){
-              funcs.push((writer: CodeBlockWriter) => writer.write("Record<string, "))
+          generator.addEventListener('object:start', (prop) => {
+            if (prop.properties) {
+              funcs.push((writer: CodeBlockWriter) => writer.write('{ '))
+            } else if (prop.additionalProperties) {
+              funcs.push((writer: CodeBlockWriter) =>
+                writer.write('Record<string, ')
+              )
             } else {
-              funcs.push((writer: CodeBlockWriter) => writer.write("any"))
+              funcs.push((writer: CodeBlockWriter) => writer.write('any'))
             }
           })
-          generator.addEventListener("object:end", (prop) => {
-            if(prop.properties) {
-              funcs.push((writer: CodeBlockWriter) => writer.write(" }"));
+          generator.addEventListener('object:end', (prop) => {
+            if (prop.properties) {
+              funcs.push((writer: CodeBlockWriter) => writer.write(' }'))
             }
-            if(prop.additionalProperties){
-              funcs.push((writer: CodeBlockWriter) => writer.write(">"))
+            if (prop.additionalProperties) {
+              funcs.push((writer: CodeBlockWriter) => writer.write('>'))
             }
           })
-          generator.addEventListener("array:start", () => {
+          generator.addEventListener('array:start', () => {})
+          generator.addEventListener('array:end', () => {
+            funcs.push((writer: CodeBlockWriter) => writer.write('[]'))
           })
-          generator.addEventListener("array:end", () => {
-            funcs.push((writer: CodeBlockWriter) => writer.write("[]"))
-          })
-          generator.addEventListener("scalar", (prop) => {
-            if(prop.type){
+          generator.addEventListener('scalar', (prop) => {
+            if (prop.type) {
               let type: string
               if (prop.type === scalarType.string && Array.isArray(prop.enum)) {
-                type = prop.enum.map(x => `'${x}'`).join(' | ');
+                type = prop.enum.map((x) => `'${x}'`).join(' | ')
               } else {
-                type = Reflect.get(scalarType, prop.type);
+                type = Reflect.get(scalarType, prop.type)
               }
               funcs.push((writer: CodeBlockWriter) => writer.write(type))
             }
           })
-          generator.addEventListener("ref", (prop) => {
-            if(!this.context.imports.includes(prop.$ref)){
+          generator.addEventListener('ref', (prop) => {
+            if (!this.context.imports.includes(prop.$ref)) {
               this.context.imports.push(prop.$ref)
             }
             if (!generic) {
-              const type = this.checkAndAddImport(prop.$ref, that.imports, modelName ? [modelName]: []);
+              const type = this.checkAndAddImport(
+                prop.$ref,
+                that.imports,
+                modelName ? [modelName] : []
+              )
               logger(modelName, type, that.imports)
               funcs.push((writer: CodeBlockWriter) => writer.write(type))
             } else {
               funcs.push((writer: CodeBlockWriter) => writer.write('T'))
             }
           })
-  
+
           generator.handleProp2(prop)
-          
+
           return (writer: CodeBlockWriter) => {
-            funcs.forEach(func => func.call(null, writer))
+            funcs.forEach((func) => func.call(null, writer))
           }
         }
 
-        const type: PropertyDeclarationStructure["type"] = thunk()
+        const type: PropertyDeclarationStructure['type'] = thunk()
 
         properties.push({
           kind: StructureKind.PropertySignature,
-          name: propName + (requiredList.includes(propName) || prop.required ? '' : '?'),
+          name:
+            propName +
+            (requiredList.includes(propName) || prop.required ? '' : '?'),
           type,
-          docs: prop.description ? [prop.description] : []
+          docs: prop.description ? [prop.description] : [],
         })
       }
     }

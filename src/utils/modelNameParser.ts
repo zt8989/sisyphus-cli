@@ -5,9 +5,9 @@ export type ModelStruct = {
 }
 
 export const TOKEN = {
-  LEFT: "«",
-  RIGHT: "»",
-  COMMA: ","
+  LEFT: '«',
+  RIGHT: '»',
+  COMMA: ',',
 }
 
 export default class ModelNameParser {
@@ -28,14 +28,14 @@ export default class ModelNameParser {
 
   asString() {
     const data = this.getData()
-    const nameRef = { name: "" }
+    const nameRef = { name: '' }
     this._parseString(data, nameRef)
     return nameRef.name
   }
 
   asGenericString() {
     const data = this.getData()
-    const nameRef = { name: "" }
+    const nameRef = { name: '' }
     this._parserGenericString(data, nameRef)
     return nameRef.name
   }
@@ -48,13 +48,13 @@ export default class ModelNameParser {
     } else if (data.name === 'List') {
       data.children.forEach((i, index) => {
         this._parserGenericString(i, nameRef)
-        if(index !== data.children.length - 1) {
+        if (index !== data.children.length - 1) {
           nameRef.name += ', '
         }
       })
       nameRef.name += '[]'
       return
-    } else if(data.name === 'Map'){
+    } else if (data.name === 'Map') {
       nameRef.name += `Record<string, `
       this._parserGenericString(data.children[1], nameRef)
       nameRef.name += `>`
@@ -66,13 +66,13 @@ export default class ModelNameParser {
       nameRef.name += '<'
       data.children.forEach((i, index) => {
         this._parserGenericString(i, nameRef)
-        if(index !== data.children.length - 1) {
+        if (index !== data.children.length - 1) {
           nameRef.name += ', '
         }
       })
       nameRef.name += '>'
     } else {
-      if(this.generic.some(x => x === data.name)){
+      if (this.generic.some((x) => x === data.name)) {
         nameRef.name += '<any>'
       }
     }
@@ -84,7 +84,7 @@ export default class ModelNameParser {
     } else {
       nameRef.name += data.name
     }
-    data.children.forEach(i => {
+    data.children.forEach((i) => {
       this._parseString(i, nameRef)
     })
   }
@@ -96,33 +96,33 @@ export default class ModelNameParser {
     return this.data
   }
 
-  unpack(){
-    if(this.data && this.data.children.length === 1) {
+  unpack() {
+    if (this.data && this.data.children.length === 1) {
       this.data = this.data.children[0]
       return true
     }
-    if(this.data && this.data.children.length === 0) {
-      this.data = { name: "object", children: [] }
+    if (this.data && this.data.children.length === 0) {
+      this.data = { name: 'object', children: [] }
       return true
     }
     throw new Error('unpack error')
   }
 
   parse() {
-    const data: ModelStruct = { name: "", children: [] }
+    const data: ModelStruct = { name: '', children: [] }
     let ref: ModelStruct = data
     let prevRefs: ModelStruct[] = []
     while (!this.isEnd()) {
       const token = this.readToken()
       if (token === TOKEN.LEFT) {
         ref.children.push({
-          name: "",
-          children: []
+          name: '',
+          children: [],
         })
         prevRefs.push(ref)
         ref = ref.children[ref.children.length - 1]
       } else if (token === TOKEN.RIGHT) {
-        if(prevRefs.length === 0){
+        if (prevRefs.length === 0) {
           throw new Error('解析错误')
         }
         // @ts-ignore
@@ -133,8 +133,8 @@ export default class ModelNameParser {
         }
         let tempRef = prevRefs[prevRefs.length - 1]
         tempRef.children.push({
-          name: "",
-          children: []
+          name: '',
+          children: [],
         })
         ref = tempRef.children[tempRef.children.length - 1]
       } else {
@@ -155,14 +155,14 @@ export default class ModelNameParser {
       this.position += empty[0].length
     }
     if (name.length == 0) {
-      return ""
+      return ''
     }
-    if (/[_0-9a-z$\u4e00-\u9eff]/i.test(name[0])) {
-      const match = name.match(/[_0-9a-z$\u4e00-\u9eff]+/i)
+    if (/[_\-0-9a-z$\u4e00-\u9eff]/i.test(name[0])) {
+      const match = name.match(/[_\-0-9a-z$\u4e00-\u9eff]+/i)
       if (match) {
         this.position += match[0].length
       }
-      return match ? match[0] : ""
+      return match ? match[0] : ''
     } else if (name[0] === TOKEN.LEFT) {
       this.position += 1
       return name[0]
