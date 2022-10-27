@@ -7,6 +7,19 @@ describe('ModelNameParser module', () => {
     const name = 'HashMap«string,object»'
     const parser = new ModelNameParser(name, [])
     expect(() => parser.parse()).not.toThrow()
+    expect(parser.getData()).toMatchObject({
+      name: 'HashMap',
+      children: [
+        {
+          children: [],
+          name: 'string',
+        },
+        {
+          children: [],
+          name: 'object',
+        },
+      ],
+    })
   }, 1000)
 
   test('given chinese name throw error', () => {

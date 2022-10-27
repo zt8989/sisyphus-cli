@@ -7,7 +7,7 @@ import { getTypeNameFromRef } from "./v3/schema.bs";
 import { ParseError } from "./exception/ParseError";
 import { createLogger } from "./utils/log";
 
-const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
+const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'HashMap', 'string', 'Void', 'int']
 
 const logger = createLogger("BaseTool")
 
@@ -59,7 +59,7 @@ export default class BaseTool {
     const parser = new ModelNameParser(name, this.context.generic || [])
     parser.parse()
     const struct = parser.getData()
-    const generic = ["List", "Map"]
+    const generic = ["List", "Map", "HashMap"]
     if (generic.some(g => g === struct.name)) {
       return false
     }
@@ -67,7 +67,8 @@ export default class BaseTool {
   }
 
   getModelType(name: string): [boolean, ModelNameParser] {
-    const parser = new ModelNameParser(name, this.context.generic || [])
+    let modelNamesMap = this.context.config.modelNames || {}
+    const parser = new ModelNameParser(modelNamesMap[name] || name, this.context.generic || [])
     parser.parse()
     const struct = parser.getData()
     // console.log(this.context.generic)
@@ -106,7 +107,7 @@ export default class BaseTool {
       const data = parser.getData()
       const moduleSpecifier = this.getRelativePath(data.name)
       const importName = data.name
-      if (!exclude.some(name => name === ref ) && !imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
+      if (!filterList.includes(data.name) && !exclude.some(name => name === ref ) && !imports.some(i => i.moduleSpecifier === moduleSpecifier)) {
         imports.push({
           kind: StructureKind.ImportDeclaration,
           moduleSpecifier,
@@ -229,7 +230,7 @@ export default class BaseTool {
       return this._checkAndAddImport(name, imports, exclude)
     } catch (e: unknown){
       if(e instanceof ParseError){
-        logger.warning("解析失败！请联系后端修改模型名称：【%s】", e.message)
+        logger.warning("【%s】解析失败！请联系后端修改模型名称, 或者在配置文件中modelNames选项中添加映射。", e.message)
       }
       return 'any'
     }

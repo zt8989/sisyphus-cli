@@ -14,7 +14,8 @@ function checkAndModifyModelName(generic, name) {
   var struct = Curry._1(parser.getData, undefined);
   var g = [
     "List",
-    "Map"
+    "Map",
+    "HashMap"
   ];
   if (g.includes(struct.name)) {
     return /* Fail */0;

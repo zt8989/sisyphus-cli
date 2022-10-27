@@ -22,6 +22,10 @@ export interface ConfigDefinition {
   tags?: {
     [key: string]: string;
   };
+  /** 模型名称映射 */
+  modelNames?: {
+    [key: string]: string;
+  }
   unpackResponse?: boolean;
   nameStrategy?: (option: RenameOption, changeCase: any) => string;
   optionalQuery?: boolean;

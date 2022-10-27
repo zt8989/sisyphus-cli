@@ -40,16 +40,17 @@ export default class ModelFile extends BaseTool {
   }
 
   create() {
-    const modelName = this.modelName
     const definition = this.definition
     const map = this.context.fileMap
 
     let struct: ModelStruct | false = false
+    let modelNamesMap = this.context.config.modelNames || {}
+    const modelName = modelNamesMap[this.modelName] || this.modelName
     try {
       struct = this.checkAndModifyModelName(modelName)
     } catch(e: unknown){
       if(e instanceof ParseError){
-        logger.warning("生成模型文件失败！请联系后端修改模型名称：【%s】", e.message)
+        logger.warning("【%s】生成模型文件失败！请联系后端修改模型名称, 或者在配置文件中modelNames选项中添加映射", e.message)
       } else {
         throw e
       }
