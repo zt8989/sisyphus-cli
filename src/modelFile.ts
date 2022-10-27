@@ -13,8 +13,11 @@ import { Context, SwaggerDefinition } from './types'
 import { scalarType } from './utils/enum'
 import fs from 'fs'
 import Generator from './generator'
+import { ParseError } from './exception/ParseError'
+import { createDebugLogger } from './utils/log'
+import { ModelStruct } from './utils/modelNameParser'
 
-const logger = require('debug')('model')
+const logger = createDebugLogger("ModelFile")
 
 export default class ModelFile extends BaseTool {
   private imports: ImportDeclarationStructure[] = []
@@ -41,7 +44,17 @@ export default class ModelFile extends BaseTool {
     const definition = this.definition
     const map = this.context.fileMap
 
-    let struct = this.checkAndModifyModelName(modelName)
+    let struct: ModelStruct | false = false
+    try {
+      struct = this.checkAndModifyModelName(modelName)
+    } catch(e: unknown){
+      if(e instanceof ParseError){
+        logger.warning("生成模型文件失败！请联系后端修改模型名称：【%s】", e.message)
+      } else {
+        throw e
+      }
+      return
+    }
 
     if (struct !== false) {
       const name = this.changeCaseName(struct.name)
@@ -173,7 +186,7 @@ export default class ModelFile extends BaseTool {
                 that.imports,
                 modelName ? [modelName] : []
               )
-              logger(modelName, type, that.imports)
+              logger.debug("modelName: %s, type: %s, imports: %O", modelName, type, that.imports)
               funcs.push((writer: CodeBlockWriter) => writer.write(type))
             } else {
               funcs.push((writer: CodeBlockWriter) => writer.write('T'))
@@ -199,7 +212,7 @@ export default class ModelFile extends BaseTool {
         })
       }
     }
-    logger(modelName, that.imports)
+    logger.debug("modelName: %s, imports: %O", modelName, that.imports)
     return properties
   }
 }

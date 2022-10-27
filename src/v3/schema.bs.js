@@ -16,7 +16,15 @@ var SchemaResolve = {
 };
 
 function getModelNameFromRef(ref) {
-  return ref.slice("#/".length).split("/");
+  var def = "#/definitions/";
+  if (ref.startsWith(def)) {
+    return [
+            "definitions",
+            ref.slice(def.length)
+          ];
+  } else {
+    return ref.slice("#/".length).split("/");
+  }
 }
 
 function getTypeNameFromRef(ref) {

@@ -4,8 +4,12 @@ import { scalarType } from "./utils/enum";
 import { Context, SwaggerParameter, SwaggerProperty } from "./types";
 import { mapValues } from "./utils/obj";
 import { getTypeNameFromRef } from "./v3/schema.bs";
+import { ParseError } from "./exception/ParseError";
+import { createLogger } from "./utils/log";
 
 const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'string', 'Void', 'int']
+
+const logger = createLogger("BaseTool")
 
 export default class BaseTool {
   protected context: Context
@@ -221,6 +225,13 @@ export default class BaseTool {
     if(!this.context.imports.includes(ref)){
       this.context.imports.push(ref)
     }
-    return this._checkAndAddImport(name, imports, exclude)
+    try {
+      return this._checkAndAddImport(name, imports, exclude)
+    } catch (e: unknown){
+      if(e instanceof ParseError){
+        logger.warning("解析失败！请联系后端修改模型名称：【%s】", e.message)
+      }
+      return 'any'
+    }
   }
 }

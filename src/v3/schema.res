@@ -29,7 +29,12 @@ type rec schema = {
 type importType = Primary(string) | Object(string, string)
 
 let getModelNameFromRef = ref => {
-  ref->Js_string2.sliceToEnd(~from = "#/"->Js.String2.length)->Js_string2.split("/")
+  let def = "#/definitions/"
+  if ref->Js_string2.startsWith(def) {
+    ["definitions", ref->Js_string2.sliceToEnd(~from= def->Js.String2.length)]
+  } else {
+    ref->Js_string2.sliceToEnd(~from = "#/"->Js.String2.length)->Js_string2.split("/")
+  }
 }
 
 let getTypeNameFromRef = ref => {
