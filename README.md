@@ -64,7 +64,8 @@ module.exports = {
       "success": true
     })
   }
-  responseNullable: true
+  responseNullable: true,
+  formatUrl: (baseUrl, url) => baseUrl + "/" + url
 }
 ```
 
@@ -163,6 +164,9 @@ export { request, bindUrl };
 
 # responseNullable
 可选，boolean， 响应为 T | null
+
+# formatUrl
+可选，自定义拼接URL
 # QA
 
 Q: 我遇到了中文的model怎么办？
