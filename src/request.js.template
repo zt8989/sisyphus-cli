@@ -1,0 +1,22 @@
+import axios from 'axios'
+
+function bindUrl(path: string, pathParams: any) {
+  if (!path.match(/^\//)) {
+    path = '/' + path;
+  }
+  var url = path;
+  url = url.replace(/\{([\w-]+)\}/g, function (fullMatch, key) {
+    var value;
+    if (pathParams.hasOwnProperty(key)) {
+      value = pathParams[key];
+    } else {
+      value = fullMatch;
+    }
+    return encodeURIComponent(value);
+  });
+  return url;
+}
+
+const request = axios
+
+export { request, bindUrl };

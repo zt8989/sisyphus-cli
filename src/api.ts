@@ -8,6 +8,11 @@ import {
   StructureKind,
   Project,
   WriterFunction,
+  VariableStatementStructure,
+  ExportAssignmentStructure,
+  VariableDeclarationKind,
+  OptionalKind,
+  VariableDeclarationStructure,
 } from "ts-morph";
 import fs from "fs";
 import { scalarType } from "./utils/enum";
@@ -122,12 +127,34 @@ export default class ApiTool<
       const tagName = this.getTag(tag);
 
       const URLS_ENUM_NAME = tagName + "_URLS";
-      const urlsEnum: EnumDeclarationStructure = {
-        name: URLS_ENUM_NAME,
+      const members: EnumDeclarationStructure["members"] = []
+      // const urlsEnum: EnumDeclarationStructure = {
+      //   name: URLS_ENUM_NAME,
+      //   isExported: true,
+      //   members: members,
+      //   kind: StructureKind.Enum,
+      // };
+
+      const urlsRecord: VariableStatementStructure = {
+        declarationKind: VariableDeclarationKind.Const,
+        declarations: [{
+          name: URLS_ENUM_NAME,
+          initializer: writer => {
+            writer.writeLine("{")
+            members.forEach(m => {
+              m.docs?.forEach(d => {
+                writer.writeLine(`/** ${d} */`)
+              })
+              writer.writeLine(`${m.name}: '${m.value}',`)
+            })
+            writer.writeLine("}")
+          }
+        }],
         isExported: true,
-        members: [],
-        kind: StructureKind.Enum,
-      };
+        // leadingTrivia: "abc",
+        // trailingTrivia: "efg",
+        kind: StructureKind.VariableStatement
+      }
 
       const paths = data.paths;
       const functions: (FunctionDeclarationStructure | WriterFunction)[] = [];
@@ -159,7 +186,7 @@ export default class ApiTool<
 
           const fullUrl = this.getFullUrl(data.basePath, url);
           // @ts-ignore
-          urlsEnum.members.push({
+          members.push({
             name: methodName,
             value: fullUrl,
             docs: [...docs],
@@ -233,12 +260,9 @@ export default class ApiTool<
         }
       }
 
-      const path = join(this.context.outDir, `${tagName}.ts`);
-      if (fs.existsSync(path)) {
-        fs.unlinkSync(path);
-      }
+      const path = this.getApiPath(tagName)
       project.createSourceFile(path, {
-        statements: [...imports, urlsEnum, ...functions],
+        statements: [...imports, urlsRecord, ...functions],
       });
     }
   }

@@ -14,6 +14,7 @@ export interface Context {
   outDir: string;
   generic: string[];
   imports: string[];
+  tempDir: string
 }
 
 export interface ConfigDefinition {
@@ -38,6 +39,7 @@ export interface ConfigDefinition {
   mockOverwrite?: (response: any) => any;
   formatUrl?: (baseUrl: string, url: string) => string;
   responseNullable?: boolean;
+  exportJs: boolean
 }
 
 export interface SwaggerTypes<T> {

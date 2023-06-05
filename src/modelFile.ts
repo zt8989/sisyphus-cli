@@ -60,10 +60,7 @@ export default class ModelFile extends BaseTool {
     if (struct !== false) {
       const name = this.changeCaseName(struct.name)
       if (struct.children.length > 0) {
-        const path = join(this.context.outDir, `model/${name}.ts`)
-        if (fs.existsSync(path)) {
-          fs.unlinkSync(path)
-        }
+        const path = this.findModelPath(name)
         const properties = this.getProperties(definition, true)
 
         if (this.context.generic.includes(name)) {
@@ -89,13 +86,7 @@ export default class ModelFile extends BaseTool {
           return
         }
         const name = this.changeCaseName(modelName)
-        const path = join(
-          this.context.outDir,
-          `model/${this.changeCaseName(map[modelName] || modelName)}.ts`
-        )
-        if (fs.existsSync(path)) {
-          fs.unlinkSync(path)
-        }
+        const path = this.findModelGenericPath(map, modelName)
         const properties = this.getProperties(definition)
         const interfaces: InterfaceDeclarationStructure[] = [
           {
@@ -111,6 +102,20 @@ export default class ModelFile extends BaseTool {
         })
       }
     }
+  }
+
+  findModelGenericPath(map: Record<string, string>, modelName: string){
+    const basePath: string = this.context.config.exportJs ? 
+    this.context.tempDir : this.context.outDir
+    const path = join(
+      basePath,
+      `model/${this.changeCaseName(map[modelName] || modelName)}.ts`
+    )
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path)
+    }
+
+    return path
   }
 
   getProperties(definition: SwaggerDefinition, generic = false) {

@@ -6,6 +6,8 @@ import { mapValues } from "./utils/obj";
 import { getTypeNameFromRef } from "./v3/schema.bs";
 import { ParseError } from "./exception/ParseError";
 import { createLogger } from "./utils/log";
+import { join } from "path";
+import fs from "fs";
 
 const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'HashMap', 'string', 'Void', 'int']
 
@@ -219,6 +221,36 @@ export default class BaseTool {
       }
       return importName
     }
+  }
+
+  getApiPath(tagName: string){
+    const basePath: string = this.context.config.exportJs ? 
+      this.context.tempDir : this.context.outDir
+    const path = join(basePath, `${tagName}.ts`);
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path);
+    }
+    return path
+  }
+
+  getModelPath(name: string) {
+    const basePath: string = this.context.config.exportJs ? 
+    this.context.tempDir : this.context.outDir
+    const path = join(basePath, `model/${name}.ts`)
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path)
+    }
+    return path
+  }
+
+  findModelPath(name: string) {
+    const basePath: string = this.context.config.exportJs ? 
+    this.context.tempDir : this.context.outDir
+    const path = join(basePath, `model/${name}.ts`)
+    if (fs.existsSync(path)) {
+      fs.unlinkSync(path)
+    }
+    return path
   }
 
   checkAndAddImport(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {

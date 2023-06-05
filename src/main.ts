@@ -8,12 +8,15 @@ import ora from "ora";
 import { ConfigDefinition, Context, SwaggerJson } from "./types";
 import { createApp } from "./site";
 import inquirer from "inquirer";
+import which from "which"
 inquirer.registerPrompt(
   "checkbox-plus",
   require("inquirer-checkbox-plus-prompt")
 );
 import pinyin from "pinyin-match";
 import { makeApi, makeModel } from "./factory.bs";
+import { exec } from "child_process";
+import { tmpdir } from "os";
 
 // @ts-ignore
 async function genIndex() {
@@ -80,7 +83,7 @@ function getConfig(cmdObj: any) {
     );
     return false;
   }
-  let configJson;
+  let configJson: ConfigDefinition;
   if (configFile1) {
     configJson = require(configFile1) as ConfigDefinition;
   } else {
@@ -97,6 +100,10 @@ function getConfig(cmdObj: any) {
 
   if (configJson.onlyTags === undefined) {
     configJson.onlyTags = false;
+  }
+
+  if (configJson.exportJs === undefined) {
+    configJson.exportJs = false;
   }
 
   if (!configJson.outDir) {
@@ -173,6 +180,8 @@ async function importSwagger(cmdObj: any) {
       outDir: key === "default" ? config.outDir : join(config.outDir, key),
       generic: [],
       imports: [],
+      // tempDir: "/tmp/petApi" //tmpdir()
+      tempDir: tmpdir()
     };
 
     const modelService = makeModel(data)(context, project);
@@ -194,6 +203,60 @@ async function importSwagger(cmdObj: any) {
     // }
     // await genIndex(project)
     await project.save();
+    if(config.exportJs){
+      const tsconfig = {
+        "compilerOptions": {
+          "target": "es6",
+          "declaration": true,
+          // "allowJs": true
+        }
+      }
+      await fs.promises.writeFile(join(context.tempDir, "tsconfig.json"), JSON.stringify(tsconfig, null, " "), { encoding: "utf8" })
+      // const requestJs = "request.js"
+      // const tempDirReqJS = join(context.tempDir, requestJs)
+      // const currentReqJs = join(process.cwd(), config.outDir, requestJs)
+      // if(fs.existsSync(currentReqJs)){
+      //   await fs.promises.copyFile(currentReqJs, tempDirReqJS)
+      // } else {
+      //   await fs.promises.writeFile(tempDirReqJS, `import axios from 'axios'
+
+      //   function bindUrl(path: string, pathParams: any) {
+      //     if (!path.match(/^\//)) {
+      //       path = '/' + path;
+      //     }
+      //     var url = path;
+      //     url = url.replace(/\{([\w-]+)\}/g, function (fullMatch, key) {
+      //       var value;
+      //       if (pathParams.hasOwnProperty(key)) {
+      //         value = pathParams[key];
+      //       } else {
+      //         value = fullMatch;
+      //       }
+      //       return encodeURIComponent(value);
+      //     });
+      //     return url;
+      //   }
+        
+      //   const request = axios
+        
+      //   export { request, bindUrl };`, { encoding: "utf8" })
+      // }
+      const tsc = await which("tsc")
+      console.log("tempDir", context.tempDir)
+      exec(tsc + " --outDir " + join(process.cwd(), config.outDir), {
+        cwd: context.tempDir
+      }, (err, out, stderr) => {
+        if(err){
+          console.error(err)
+          return
+        }
+        if(!stderr){
+          console.error(stderr)
+        } else {
+          console.info("ts => js转换成功", out)
+        }
+      })
+    }
   }
   console.log(`生成成功！执行以下命令修复ts格式`);
   console.log(`yarn prettier --write ${config.outDir}/**/*.ts`);
@@ -281,6 +344,7 @@ async function mockData(cmdObj: any) {
       outDir: key === "default" ? config.outDir : join(config.outDir, key),
       generic: [],
       imports: [],
+      tempDir: ""
     };
 
     let tags = data.tags;
