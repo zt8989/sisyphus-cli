@@ -9,10 +9,7 @@ import {
   Project,
   WriterFunction,
   VariableStatementStructure,
-  ExportAssignmentStructure,
   VariableDeclarationKind,
-  OptionalKind,
-  VariableDeclarationStructure,
 } from "ts-morph";
 import fs from "fs";
 import { scalarType } from "./utils/enum";

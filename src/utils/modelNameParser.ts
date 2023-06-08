@@ -54,7 +54,7 @@ export default class ModelNameParser {
       nameRef.name += Reflect.get(scalarType, data.name)
     } else if (data.name === 'object') {
       nameRef.name += 'any'
-    } else if (data.name === 'List') {
+    } else if (data.name === 'List' || data.name === 'ArrayList') {
       data.children.forEach((i, index) => {
         this._parserGenericString(i, nameRef)
         if (index !== data.children.length - 1) {

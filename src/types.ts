@@ -39,7 +39,8 @@ export interface ConfigDefinition {
   mockOverwrite?: (response: any) => any;
   formatUrl?: (baseUrl: string, url: string) => string;
   responseNullable?: boolean;
-  exportJs: boolean
+  exportJs?: boolean;
+  genericClasses?: { name: string, props: string[] }[]
 }
 
 export interface SwaggerTypes<T> {

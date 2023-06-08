@@ -15,8 +15,11 @@ inquirer.registerPrompt(
 );
 import pinyin from "pinyin-match";
 import { makeApi, makeModel } from "./factory.bs";
-import { exec } from "child_process";
+import * as child_process from "child_process";
 import { tmpdir } from "os";
+import { createDebugLogger } from './utils/log'
+
+const logger = createDebugLogger("Main")
 
 // @ts-ignore
 async function genIndex() {
@@ -142,6 +145,8 @@ function getConfig(cmdObj: any) {
     }
   }
 
+  logger.debug("config: %O", configJson)
+
   return configJson;
 }
 
@@ -181,8 +186,12 @@ async function importSwagger(cmdObj: any) {
       generic: [],
       imports: [],
       // tempDir: "/tmp/petApi" //tmpdir()
-      tempDir: tmpdir()
+      tempDir: join(tmpdir(), "sisyphus")
     };
+    if(fs.existsSync(context.tempDir)){
+      await fs.promises.rm(context.tempDir, { force: true, recursive: true })
+    }
+    await fs.promises.mkdir(context.tempDir)
 
     const modelService = makeModel(data)(context, project);
 
@@ -211,6 +220,8 @@ async function importSwagger(cmdObj: any) {
           // "allowJs": true
         }
       }
+
+      console.log(context.tempDir)
       await fs.promises.writeFile(join(context.tempDir, "tsconfig.json"), JSON.stringify(tsconfig, null, " "), { encoding: "utf8" })
       // const requestJs = "request.js"
       // const tempDirReqJS = join(context.tempDir, requestJs)
@@ -242,20 +253,16 @@ async function importSwagger(cmdObj: any) {
       //   export { request, bindUrl };`, { encoding: "utf8" })
       // }
       const tsc = await which("tsc")
-      console.log("tempDir", context.tempDir)
-      exec(tsc + " --outDir " + join(process.cwd(), config.outDir), {
+      const exec = promisify(child_process.exec)
+      const { stdout, stderr } = await exec(tsc + " --outDir " + join(process.cwd(), config.outDir), {
         cwd: context.tempDir
-      }, (err, out, stderr) => {
-        if(err){
-          console.error(err)
-          return
-        }
-        if(!stderr){
-          console.error(stderr)
-        } else {
-          console.info("ts => js转换成功", out)
-        }
       })
+
+      if(!stderr){
+        console.info("ts => js转换成功", stdout)
+      } else {
+        console.error(stderr)
+      }
     }
   }
   console.log(`生成成功！执行以下命令修复ts格式`);

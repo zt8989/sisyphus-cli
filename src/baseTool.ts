@@ -9,7 +9,7 @@ import { createLogger } from "./utils/log";
 import { join } from "path";
 import fs from "fs";
 
-const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'Map', 'HashMap', 'string', 'Void', 'int']
+const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'ArrayList', 'Map', 'HashMap', 'string', 'Void', 'int']
 
 const logger = createLogger("BaseTool")
 
@@ -251,6 +251,11 @@ export default class BaseTool {
       fs.unlinkSync(path)
     }
     return path
+  }
+
+  check(ref: string) {
+    const name = getTypeNameFromRef(ref)
+    return name
   }
 
   checkAndAddImport(ref: string, imports: ImportDeclarationStructure[], exclude: string[] = []) {

@@ -61,7 +61,7 @@ export default class ModelFile extends BaseTool {
       const name = this.changeCaseName(struct.name)
       if (struct.children.length > 0) {
         const path = this.findModelPath(name)
-        const properties = this.getProperties(definition, true)
+        const properties = this.getProperties(name, definition, true)
 
         if (this.context.generic.includes(name)) {
           return
@@ -87,7 +87,7 @@ export default class ModelFile extends BaseTool {
         }
         const name = this.changeCaseName(modelName)
         const path = this.findModelGenericPath(map, modelName)
-        const properties = this.getProperties(definition)
+        const properties = this.getProperties(name, definition)
         const interfaces: InterfaceDeclarationStructure[] = [
           {
             kind: StructureKind.Interface,
@@ -106,10 +106,11 @@ export default class ModelFile extends BaseTool {
 
   findModelGenericPath(map: Record<string, string>, modelName: string){
     const basePath: string = this.context.config.exportJs ? 
-    this.context.tempDir : this.context.outDir
+    this.context.tempDir : this.context.outDir;
+    const finalModelName = this.changeCaseName(map[modelName] || modelName)
     const path = join(
       basePath,
-      `model/${this.changeCaseName(map[modelName] || modelName)}.ts`
+      `model/${finalModelName}.ts`
     )
     if (fs.existsSync(path)) {
       fs.unlinkSync(path)
@@ -118,9 +119,14 @@ export default class ModelFile extends BaseTool {
     return path
   }
 
-  getProperties(definition: SwaggerDefinition, generic = false) {
-    const modelName = this.modelName
-    const that = this
+  getProperties(name: string, definition: SwaggerDefinition, generic = false) {
+    const modelName = this.modelName;
+    const that = this;
+
+    logger.debug("getProperties, %O, %s", 
+      this.context.config.genericClasses, name)
+    const genericProps = this.context.config.genericClasses
+      ?.find(it => it.name === name)?.props || []
 
     const properties: PropertySignatureStructure[] = []
     if (definition.type === 'object') {
@@ -173,20 +179,27 @@ export default class ModelFile extends BaseTool {
           })
           generator.addEventListener('scalar', (prop) => {
             if (prop.type) {
-              let type: string
-              if (prop.type === scalarType.string && Array.isArray(prop.enum)) {
-                type = prop.enum.map((x) => `'${x}'`).join(' | ')
+              if(genericProps.includes(propName)){
+                funcs.push((writer: CodeBlockWriter) => writer.write("T"))
               } else {
-                type = Reflect.get(scalarType, prop.type)
+                let type: string
+                if (prop.type === scalarType.string && Array.isArray(prop.enum)) {
+                  type = prop.enum.map((x) => `'${x}'`).join(' | ')
+                } else {
+                  type = Reflect.get(scalarType, prop.type)
+                }
+                funcs.push((writer: CodeBlockWriter) => writer.write(type))
               }
-              funcs.push((writer: CodeBlockWriter) => writer.write(type))
             }
           })
           generator.addEventListener('ref', (prop) => {
             if (!this.context.imports.includes(prop.$ref)) {
               this.context.imports.push(prop.$ref)
             }
-            if (!generic) {
+            if(genericProps.includes(propName)){
+              funcs.push((writer: CodeBlockWriter) => writer.write("T"))
+            } else {
+              // 识别泛型代码
               const type = this.checkAndAddImport(
                 prop.$ref,
                 that.imports,
@@ -194,8 +207,6 @@ export default class ModelFile extends BaseTool {
               )
               logger.debug("modelName: %s, type: %s, imports: %O", modelName, type, that.imports)
               funcs.push((writer: CodeBlockWriter) => writer.write(type))
-            } else {
-              funcs.push((writer: CodeBlockWriter) => writer.write('T'))
             }
           })
 
@@ -213,7 +224,7 @@ export default class ModelFile extends BaseTool {
           name:
             propName +
             (requiredList.includes(propName) || prop.required ? '' : '?'),
-          type,
+          type: type,
           docs: prop.description ? [prop.description] : [],
         })
       }
