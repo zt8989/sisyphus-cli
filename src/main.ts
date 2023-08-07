@@ -9,15 +9,16 @@ import { ConfigDefinition, Context, SwaggerJson } from "./types";
 import { createApp } from "./site";
 import inquirer from "inquirer";
 import which from "which"
+import pinyin from "pinyin-match";
+import { makeApi, makeModel } from "./factory.bs";
+import * as child_process from "child_process";
+import { tmpdir, platform } from "os";
+import { createDebugLogger } from './utils/log'
+
 inquirer.registerPrompt(
   "checkbox-plus",
   require("inquirer-checkbox-plus-prompt")
 );
-import pinyin from "pinyin-match";
-import { makeApi, makeModel } from "./factory.bs";
-import * as child_process from "child_process";
-import { tmpdir } from "os";
-import { createDebugLogger } from './utils/log'
 
 const logger = createDebugLogger("Main")
 
@@ -253,8 +254,9 @@ async function importSwagger(cmdObj: any) {
       //   export { request, bindUrl };`, { encoding: "utf8" })
       // }
       const tsc = await which("tsc")
+      const win32 = platform() === 'win32'
       const exec = promisify(child_process.exec)
-      const { stdout, stderr } = await exec(tsc + " --outDir " + join(process.cwd(), config.outDir), {
+      const { stdout, stderr } = await exec(win32 ? `"${tsc}"` : tsc + " --outDir " + join(process.cwd(), config.outDir), {
         cwd: context.tempDir
       })
 
