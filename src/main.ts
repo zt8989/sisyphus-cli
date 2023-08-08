@@ -259,7 +259,7 @@ async function importSwagger(cmdObj: any) {
       if(win32){
         // powershell
         if(process.env["PATHEXT"]?.includes(".CPL")){
-          tsc = `& '${tsc}'`
+          tsc = `'${tsc}'`
         } else {
           tsc = `"${tsc}"`
         }
