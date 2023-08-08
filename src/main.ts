@@ -12,7 +12,7 @@ import which from "which"
 import pinyin from "pinyin-match";
 import { makeApi, makeModel } from "./factory.bs";
 import * as child_process from "child_process";
-import { tmpdir, platform } from "os";
+import { tmpdir } from "os";
 import { createDebugLogger } from './utils/log'
 
 inquirer.registerPrompt(
@@ -224,47 +224,9 @@ async function importSwagger(cmdObj: any) {
 
       console.log(context.tempDir)
       await fs.promises.writeFile(join(context.tempDir, "tsconfig.json"), JSON.stringify(tsconfig, null, " "), { encoding: "utf8" })
-      // const requestJs = "request.js"
-      // const tempDirReqJS = join(context.tempDir, requestJs)
-      // const currentReqJs = join(process.cwd(), config.outDir, requestJs)
-      // if(fs.existsSync(currentReqJs)){
-      //   await fs.promises.copyFile(currentReqJs, tempDirReqJS)
-      // } else {
-      //   await fs.promises.writeFile(tempDirReqJS, `import axios from 'axios'
-
-      //   function bindUrl(path: string, pathParams: any) {
-      //     if (!path.match(/^\//)) {
-      //       path = '/' + path;
-      //     }
-      //     var url = path;
-      //     url = url.replace(/\{([\w-]+)\}/g, function (fullMatch, key) {
-      //       var value;
-      //       if (pathParams.hasOwnProperty(key)) {
-      //         value = pathParams[key];
-      //       } else {
-      //         value = fullMatch;
-      //       }
-      //       return encodeURIComponent(value);
-      //     });
-      //     return url;
-      //   }
-        
-      //   const request = axios
-        
-      //   export { request, bindUrl };`, { encoding: "utf8" })
-      // }
       let tsc = await which("tsc")
-      const win32 = platform() === 'win32'
-      const exec = promisify(child_process.exec)
-      if(win32){
-        // powershell
-        if(process.env["PATHEXT"]?.includes(".CPL")){
-          tsc = `'${tsc}'`
-        } else {
-          tsc = `"${tsc}"`
-        }
-      }
-      const { stdout, stderr } = await exec(tsc + " --outDir " + join(process.cwd(), config.outDir), {
+      const execFile = promisify(child_process.execFile)
+      const { stdout, stderr } = await execFile(tsc, [" --outDir ", join(process.cwd(), config.outDir)], {
         cwd: context.tempDir
       })
 
