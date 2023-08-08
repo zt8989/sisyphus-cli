@@ -253,10 +253,18 @@ async function importSwagger(cmdObj: any) {
         
       //   export { request, bindUrl };`, { encoding: "utf8" })
       // }
-      const tsc = await which("tsc")
+      let tsc = await which("tsc")
       const win32 = platform() === 'win32'
       const exec = promisify(child_process.exec)
-      const { stdout, stderr } = await exec(win32 ? `"${tsc}"` : tsc + " --outDir " + join(process.cwd(), config.outDir), {
+      if(win32){
+        // powershell
+        if(process.env["PATHEXT"]?.includes(".CPL")){
+          tsc = `& '${tsc}'`
+        } else {
+          tsc = `"${tsc}"`
+        }
+      }
+      const { stdout, stderr } = await exec(tsc + " --outDir " + join(process.cwd(), config.outDir), {
         cwd: context.tempDir
       })
 
