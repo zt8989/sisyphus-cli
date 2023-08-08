@@ -226,7 +226,7 @@ async function importSwagger(cmdObj: any) {
       await fs.promises.writeFile(join(context.tempDir, "tsconfig.json"), JSON.stringify(tsconfig, null, " "), { encoding: "utf8" })
       let tsc = await which("tsc")
       const execFile = promisify(child_process.execFile)
-      const { stdout, stderr } = await execFile(tsc, [" --outDir ", join(process.cwd(), config.outDir)], {
+      const { stdout, stderr } = await execFile(tsc, ["--outDir", join(process.cwd(), config.outDir)], {
         cwd: context.tempDir
       })
 
