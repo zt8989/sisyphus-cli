@@ -161,11 +161,16 @@ export default class ApiTool<
       for (let url in paths) {
         const methods = paths[url];
         for (let method in methods) {
+          const apiDefine = methods[method]
           if (methods[method].tags.indexOf(tag) === -1) {
             break;
           }
           const docs: string[] = [];
           const headers: { [key: string]: string } = {};
+          if(apiDefine.consumes) {
+            headers["Content-Type"] = apiDefine.consumes[0]
+          }
+
           if (methods[method].summary) {
             docs.push(methods[method].summary);
           }
@@ -632,7 +637,6 @@ export default class ApiTool<
         type: "FormData",
       };
       docs.push(`@param FormData bodyParams - ${param.description}`);
-      headers["Content-Type"] = "application/x-www-form-urlencoded";
     }
   }
 

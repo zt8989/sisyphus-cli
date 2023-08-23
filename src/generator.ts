@@ -5,6 +5,7 @@ import { forEachValues } from "./utils/obj"
 type EventType = "*:start" | "*:end" | "object" | "object:start" | "object:end" 
   | 'array' | "array:start" | "array:end" | 'scalar' | 'scalar:start' | 'scalar:end'
   | 'ref' | 'ref:start' | 'ref:end'
+  | 'file' | 'file:start' | 'file:end'
 
 type EventListener = (prop: SwaggerProperty, deep?: number) => void
 
@@ -145,11 +146,33 @@ export default class Generator {
       case 'ref':
         this.handleScalar(prop, continuation)
         break
+      case 'file':
+        this.handleFile(prop, continuation)
+        break
       case undefined:
         this.handleRef(prop, continuation)
         break
       default:
         throw new Error("unknow type" + beautify(prop, null as any, 2, 100))
+    }
+  }
+
+  handleFile = (prop: SwaggerProperty, continuation: number) => {
+    switch(continuation) {
+      case 0: {
+        this.emit("*:start", prop, this.$stack.length)
+        this.emit("file:start", prop)
+        break;
+      }
+      case 1: {
+        this.emit("file", prop)
+        break
+      }
+      case 2: {
+        this.emit("file:end", prop)
+        this.emit("*:end", prop, this.$stack.length)
+        break
+      }
     }
   }
 
