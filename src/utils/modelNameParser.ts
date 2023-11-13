@@ -25,7 +25,7 @@ export default class ModelNameParser {
 
   constructor(name: string, generic: string[]) {
     logger.debug('try parse %s', name)
-    this.name = name
+    this.name = name.replace("-", "_")
     this.generic = generic
   }
 
