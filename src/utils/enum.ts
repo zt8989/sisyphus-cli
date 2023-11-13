@@ -9,7 +9,7 @@ export const scalarType: Record<string, string> = {
   'ref': 'any'
 }
 
-export const BaseType = [...Object.keys(scalarType), 'object', 'List', 'Map', 'ArrayList']
+export const BaseType = [...Object.keys(scalarType), 'object', 'List', 'Map', 'ArrayList', 'Set']
 
 export const scalarTypeS = {
   'string': 'S',

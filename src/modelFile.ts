@@ -36,7 +36,7 @@ export default class ModelFile extends BaseTool {
   }
 
   changeCaseName(name: string) {
-    return name.replace('-', '_')
+    return name.replaceAll('-', '_')
   }
 
   create() {

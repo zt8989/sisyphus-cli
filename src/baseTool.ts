@@ -9,7 +9,7 @@ import { createLogger } from "./utils/log";
 import { join } from "path";
 import fs from "fs";
 
-const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'ArrayList', 'Map', 'HashMap', 'string', 'Void', 'int']
+const filterList = ['object', 'long', 'boolean', 'integer', 'List', 'ArrayList', 'Map', 'HashMap', 'string', 'Void', 'int', 'Set']
 
 const logger = createLogger("BaseTool")
 
