@@ -38,6 +38,7 @@
     "json-beautify": "^1.1.1",
     "ora": "^5.1.0",
     "pinyin-match": "^1.1.8",
+    "rescript": "^9.1.4",
     "ts-morph": "^9.1.0",
     "which": "^3.0.1"
   },
