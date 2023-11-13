@@ -5,7 +5,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
-    "watch": "concurrently \"tsc -w\" \"rescript build -w\"",
+    "watch": "tsc -w",
     "test": "jest"
   },
   "repository": {
@@ -26,7 +26,6 @@
     "sample"
   ],
   "dependencies": {
-    "@ryyppy/rescript-promise": "^2.1.0",
     "axios": "^0.21.1",
     "change-case": "^4.1.1",
     "commander": "^2.19.0",
@@ -39,7 +38,6 @@
     "json-beautify": "^1.1.1",
     "ora": "^5.1.0",
     "pinyin-match": "^1.1.8",
-    "rescript": "^9.1.4",
     "ts-morph": "^9.1.0",
     "which": "^3.0.1"
   },
